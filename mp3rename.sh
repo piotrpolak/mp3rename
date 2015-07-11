@@ -24,7 +24,7 @@ OPTION_NON_MP3_NOR_FLAC_FILES=false
 declare -a ARGUMENTS=()
 
 echo
-echo -e "MP3 order tool ${COLOR_BLUE}$SCRIPT_VERSION${COLOR_NORMAL}"
+echo -e "MP3 rename tool ${COLOR_BLUE}$SCRIPT_VERSION${COLOR_NORMAL}"
 
 ################################################################################
 # Parsing input flags
@@ -57,7 +57,7 @@ echo ""
 ################################################################################
 if [ $OPTION_HAS_UNKNOWN_FLAG == true ]
 then
-    echo -e "Aborting, for help type ${COLOR_GREEN}./order.sh --help${COLOR_NORMAL}"
+    echo -e "Aborting, for help type ${COLOR_GREEN}./mp3rename.sh --help${COLOR_NORMAL}"
     exit 9
 fi
 
@@ -67,9 +67,9 @@ fi
 ################################################################################
 if [ $OPTION_HELP == true ]
 then
-    echo "Renames MP3 files and their directories according to idv3 tags"
+    echo "Renames MP3 files and their directories according to ID3 tags"
     echo
-    echo -e "Syntax: ${COLOR_GREEN}./order.sh FILE [--help] [--remove-non-music-files]${COLOR_NORMAL}"
+    echo -e "Syntax: ${COLOR_GREEN}./mp3rename.sh FILE [--help] [--remove-non-music-files]${COLOR_NORMAL}"
     echo
     echo -e "  ${COLOR_YELLOW}--help${COLOR_NORMAL}                        Displays (this) help screen"
     echo -e "  ${COLOR_YELLOW}--remove-non-music-files${COLOR_NORMAL}      Removes files different than MP3/FLAC"
@@ -86,7 +86,7 @@ WORKING_DIRECTORY=${ARGUMENTS[0]}
 ################################################################################
 if [ ${#ARGUMENTS[@]} -lt 1 ]
 then
-    echo -e "Working directory is not specified. Aborting, for help type ${COLOR_GREEN}./order.sh --help${COLOR_NORMAL}"
+    echo -e "Working directory is not specified. Aborting, for help type ${COLOR_GREEN}./mp3rename.sh --help${COLOR_NORMAL}"
     exit 9
 fi
 
@@ -145,42 +145,48 @@ do
 
     # For every MP3 file
     while read -d "|" MP3; do
+        # Checking if the path is not empty string
         if [ "$MP3" != "" ]
         then
+            # Checking whether the file exists and the filename is valid
+            if [ -f "$MP3" ]
+            then
+                # Getting MP3 info
+                INFO=`id3v2 -l "$MP3" 2> /dev/null`
 
-          # Getting MP3 info
-          INFO=`id3v2 -l "$MP3" 2> /dev/null`
+                # Checking whether the MP3 file contains valid tags
+                if [ $? -eq 0 ]
+                then
+                    # Geting directory
+                    DIRNAME=`dirname "$MP3"`
 
-          # Checking whether the MP3 file contains valid tags
-          if [ $? -eq 0 ]
-          then
-              # Geting directory
-              DIRNAME=`dirname "$MP3"`
+                    # Parsing http://stackoverflow.com/questions/5285838/get-mp3-id3-v2-tags-using-id3v2
+                    TITLE=`echo "$INFO" | sed -n '/^TIT2/s/^.*: //p' | sed 's/ (.*//'`
+                    TRACK=`echo "$INFO" | sed -n '/^TRCK/s/^.*: //p' | sed 's/ (.*//' | sed 's/\/.*//'`
 
-              # Parsing http://stackoverflow.com/questions/5285838/get-mp3-id3-v2-tags-using-id3v2
-              TITLE=`echo "$INFO" | sed -n '/^TIT2/s/^.*: //p' | sed 's/ (.*//'`
-              TRACK=`echo "$INFO" | sed -n '/^TRCK/s/^.*: //p' | sed 's/ (.*//' | sed 's/\/.*//'`
+                    # Desired file name composed out of the MP3 info
+                    DESIRED_FILENAME="${TRACK} ${TITLE}.mp3"
 
-              # Desired file name composed out of the MP3 info
-              DESIRED_FILENAME="${TRACK} ${TITLE}.mp3"
+                    # Appending 0 to songs having number less than 10
+                    if [ "${DESIRED_FILENAME:1:1}" == ' ' ]
+                    then
+                      DESIRED_FILENAME="0$DESIRED_FILENAME"
+                    fi
 
-              # Appending 0 to songs having number less than 10
-              if [ "${DESIRED_FILENAME:1:1}" == ' ' ]
-              then
-                DESIRED_FILENAME="0$DESIRED_FILENAME"
-              fi
+                    # Old filename
+                    MP3_FILENAME=`basename "$MP3"`
 
-              # Old filename
-              MP3_FILENAME=`basename "$MP3"`
+                    # Rename file only if the newly generated filename is different
+                    if [ "$DESIRED_FILENAME" != "$MP3_FILENAME" ];
+                    then
+                        mv "$MP3" "$DIRNAME/$DESIRED_FILENAME" && FILE_RENAME_COUNTER=$((FILE_RENAME_COUNTER+1))
+                    fi
 
-              # Rename file only if the newly generated filename is different
-              if [ "$DESIRED_FILENAME" != "$MP3_FILENAME" ];
-              then
-                  mv "$MP3" "$DIRNAME/$DESIRED_FILENAME" && FILE_RENAME_COUNTER=$((FILE_RENAME_COUNTER+1))
-              fi
-
-              # Picking one valid file
-              ADIRECTORY_REPRESENTATIVE_FILE="$DIRNAME/$DESIRED_FILENAME"
+                    # Picking one valid file
+                    ADIRECTORY_REPRESENTATIVE_FILE="$DIRNAME/$DESIRED_FILENAME"
+                  fi
+            else
+                  echo -e "${COLOR_RED}Given file does not exist or file path contains invalid characters ${COLOR_YELLOW}${MP3}${COLOR_NORMAL}"
             fi
         fi
     done  <<< $MP3S_IN_DIRECTORY # Done reading mp3s
