@@ -4,7 +4,7 @@
 SCRIPT_VERSION='0.1'
 
 # Issues:
-# TODO Solve problem with filenames containing multiple spaces in row
+# TODO Solve problem with filenames containing multiple consecutive spaces
 
 
 # Defining echo colors
@@ -15,10 +15,85 @@ COLOR_GREEN="\e[32m"
 COLOR_YELLOW="\e[33m"
 COLOR_BLUE="\e[36m"
 
+# Possible options
+OPTION_HELP=false
+OPTION_HAS_UNKNOWN_FLAG=false
+OPTION_NON_MP3_NOR_FLAC_FILES=false
+
+# arguments
+declare -a ARGUMENTS=()
+
 echo
 echo -e "MP3 order tool ${COLOR_BLUE}$SCRIPT_VERSION${COLOR_NORMAL}"
 
+################################################################################
+# Parsing input flags
+################################################################################
+for PARAM in $*
+do
+    if [ "${PARAM:0:2}" == "--" ]
+    then
+        if [ "$PARAM" == '--help' ]
+        then
+            OPTION_HELP=true
+        elif [ "$PARAM" == '--remove-non-music-files' ]
+        then
+            OPTION_NON_MP3_NOR_FLAC_FILES_=true
+        else
+            OPTION_HAS_UNKNOWN_FLAG=true
+            echo -e "${COLOR_RED}Unknown flag $e${COLOR_NORMAL}"
+        fi
+    else
+        # Adding arguments
+        # TODO Base directory
+        ARGUMENTS+=("$PARAM")
+    fi
+done
+echo ""
+
+
+################################################################################
+# Displaying error message for unknown flag
+################################################################################
+if [ $OPTION_HAS_UNKNOWN_FLAG == true ]
+then
+    echo -e "Aborting, for help type ${COLOR_GREEN}./order.sh --help${COLOR_NORMAL}"
+    exit 9
+fi
+
+
+################################################################################
+# Displaying help page
+################################################################################
+if [ $OPTION_HELP == true ]
+then
+    echo "Renames MP3 files and their directories according to idv3 tags"
+    echo
+    echo -e "Syntax: ${COLOR_GREEN}./order.sh FILE [--help] [--remove-non-music-files]${COLOR_NORMAL}"
+    echo
+    echo -e "  ${COLOR_YELLOW}--help${COLOR_NORMAL}                        Displays (this) help screen"
+    echo -e "  ${COLOR_YELLOW}--remove-non-music-files${COLOR_NORMAL}      Removes files different than MP3/FLAC"
+    echo
+    echo -e "Script maintained by ${COLOR_BLUE}pepis@closbrothers.pl${COLOR_NORMAL}"
+    echo
+    exit 0
+fi
+WORKING_DIRECTORY=${ARGUMENTS[0]}
+
+
+################################################################################
+# Displaying error message for no arguments
+################################################################################
+if [ ${#ARGUMENTS[@]} -lt 1 ]
+then
+    echo -e "Working directory is not specified. Aborting, for help type ${COLOR_GREEN}./order.sh --help${COLOR_NORMAL}"
+    exit 9
+fi
+
+
+################################################################################
 # Testing whether mp3info command is available
+################################################################################
 which id3v2 > /dev/null
 if [ $? -ne 0 ]
 then
@@ -27,23 +102,32 @@ then
 fi
 
 
+################################################################################
 # Removing non MP3/FLAC files
-echo "Removing files other that MP3 and FLAC..."
-NON_MP3_NOR_FLAC_FILES=`find ./*/ -type f -not -iname "*.mp3" -not -iname "*.flac" -printf "%p|"`
-COUNTER=0
+################################################################################
+if [ OPTION_NON_MP3_NOR_FLAC_FILES = true ]
+then
+    echo "Removing files other that MP3 and FLAC..."
+    NON_MP3_NOR_FLAC_FILES=`find $WORKING_DIRECTORY/*/ -type f -not -iname "*.mp3" -not -iname "*.flac" -printf "%p|"`
+    COUNTER=0
 
-# Readint item by item
-while read -d "|" NON_MP3_NOR_FLAC_FILE
-do
-    rm "$NON_MP3_NOR_FLAC_FILE" && COUNTER=$((COUNTER+1))
-done <<< $NON_MP3_NOR_FLAC_FILES
+    # Readint item by item
+    while read -d "|" NON_MP3_NOR_FLAC_FILE
+    do
+        rm "$NON_MP3_NOR_FLAC_FILE" && COUNTER=$((COUNTER+1))
+    done <<< $NON_MP3_NOR_FLAC_FILES
 
-echo -e "${COLOR_GREEN}Removed ${COLOR_YELLOW}$COUNTER${COLOR_GREEN} non MP3/FLAC files${COLOR_NORMAL}"
-echo
+    echo -e "${COLOR_GREEN}Removed ${COLOR_YELLOW}$COUNTER${COLOR_GREEN} non MP3/FLAC files${COLOR_NORMAL}"
+    echo
+fi
 
+
+################################################################################
+# Reading directories and executing the main logic
+################################################################################
 
 # Note! File directories should not contain | character
-DIRECTORIES=`find ./*/ -type d -printf "%p|"`
+DIRECTORIES=`find $WORKING_DIRECTORY/*/ -type d -printf "%p|"`
 
 # Statistics counter
 DIRECTORY_RENAME_COUNTER=0
