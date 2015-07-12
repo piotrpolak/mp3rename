@@ -5,6 +5,7 @@ SCRIPT_VERSION='0.1'
 
 # Issues:
 # TODO Solve problem with filenames containing multiple consecutive spaces
+# TODO Solve issues with directories containing & character
 
 
 # Defining echo colors
@@ -45,11 +46,10 @@ do
         fi
     else
         # Adding arguments
-        # TODO Base directory
         ARGUMENTS+=("$PARAM")
     fi
 done
-echo ""
+echo
 
 
 ################################################################################
@@ -78,7 +78,22 @@ then
     echo
     exit 0
 fi
+
+# Getting working directory out of the arguments
 WORKING_DIRECTORY=${ARGUMENTS[0]}
+
+# Appending the trailing slash if missing - this is required for security reasons
+if [ "${WORKING_DIRECTORY#${WORKING_DIRECTORY%?}}" != "/" ]
+then
+    WORKING_DIRECTORY="$WORKING_DIRECTORY/"
+fi
+
+# Checking whether the working directory exits
+if [ ! -d "$WORKING_DIRECTORY" ]
+then
+    echo -e "${COLOR_RED}Specified path is not a valid directory ${COLOR_YELLOW}./mp3rename.sh --help${COLOR_NORMAL}"
+    exit 9
+fi
 
 
 ################################################################################
@@ -108,7 +123,7 @@ fi
 if [ OPTION_NON_MP3_NOR_FLAC_FILES = true ]
 then
     echo "Removing files other that MP3 and FLAC..."
-    NON_MP3_NOR_FLAC_FILES=`find $WORKING_DIRECTORY/*/ -type f -not -iname "*.mp3" -not -iname "*.flac" -printf "%p|"`
+    NON_MP3_NOR_FLAC_FILES=`find $WORKING_DIRECTORY*/ -type f -not -iname "*.mp3" -not -iname "*.flac" -printf "%p|"`
     COUNTER=0
 
     # Readint item by item
@@ -123,11 +138,11 @@ fi
 
 
 ################################################################################
-# Reading directories and executing the main logic
+# Reading directories and executing the main logic`
 ################################################################################
 
 # Note! File directories should not contain | character
-DIRECTORIES=`find $WORKING_DIRECTORY/*/ -type d -printf "%p|"`
+DIRECTORIES=`find $WORKING_DIRECTORY*/ -type d -printf "%p|"`
 
 # Statistics counter
 DIRECTORY_RENAME_COUNTER=0
@@ -142,6 +157,10 @@ do
 
     # Read list of MP3s inside the directory (withour recursion)
     MP3S_IN_DIRECTORY=`find "$ADIRECTORY" -type f -iname "*.mp3" -maxdepth 1 -printf "%p|"`
+    # if [ $? -eq 0 ]
+    # then
+    #     echo -e "${COLOR_RED}Given file does not exist or file path contains invalid characters (multiple spaces?) ${COLOR_YELLOW}${ADIRECTORY}${COLOR_NORMAL}"
+    # fi
 
     # For every MP3 file
     while read -d "|" MP3; do
@@ -164,29 +183,40 @@ do
                     TITLE=`echo "$INFO" | sed -n '/^TIT2/s/^.*: //p' | sed 's/ (.*//'`
                     TRACK=`echo "$INFO" | sed -n '/^TRCK/s/^.*: //p' | sed 's/ (.*//' | sed 's/\/.*//'`
 
-                    # Desired file name composed out of the MP3 info
-                    DESIRED_FILENAME="${TRACK} ${TITLE}.mp3"
-
-                    # Appending 0 to songs having number less than 10
-                    if [ "${DESIRED_FILENAME:1:1}" == ' ' ]
+                    if [ "$TRACK" != '' ] && [ "$" != 'TITLE' ]
                     then
-                      DESIRED_FILENAME="0$DESIRED_FILENAME"
-                    fi
+                        # Desired file name composed out of the MP3 info
+                        DESIRED_FILENAME="${TRACK} ${TITLE}"
+                        # Removing special characters
+                        DESIRED_FILENAME=`echo $DESIRED_FILENAME | sed 's/[?.&!@#$%^&*()_+\/\"]//'`
+                        # Adding extension
+                        DESIRED_FILENAME="${DESIRED_FILENAME}.mp3"
 
-                    # Old filename
-                    MP3_FILENAME=`basename "$MP3"`
+                        # Appending 0 to songs having number less than 10
+                        if [ "${DESIRED_FILENAME:1:1}" == ' ' ]
+                        then
+                          DESIRED_FILENAME="0$DESIRED_FILENAME"
+                        fi
 
-                    # Rename file only if the newly generated filename is different
-                    if [ "$DESIRED_FILENAME" != "$MP3_FILENAME" ];
-                    then
-                        mv "$MP3" "$DIRNAME/$DESIRED_FILENAME" && FILE_RENAME_COUNTER=$((FILE_RENAME_COUNTER+1))
+                        # Old filename
+                        MP3_FILENAME=`basename "$MP3"`
+
+                        # This is needed for FAT partitions only
+                        DESIRED_FILENAME_LOWER=`echo $DESIRED_FILENAME | tr '[:upper:]' '[:lower:]'`
+                        MP3_FILENAME_LOWER=`echo $MP3_FILENAME | tr '[:upper:]' '[:lower:]'`
+
+                        # Rename file only if the newly generated filename is different
+                        if [ "$DESIRED_FILENAME_LOWER" != "$MP3_FILENAME_LOWER" ];
+                        then
+                            mv "$MP3" "$DIRNAME/$DESIRED_FILENAME" && FILE_RENAME_COUNTER=$((FILE_RENAME_COUNTER+1))
+                        fi
                     fi
 
                     # Picking one valid file
                     ADIRECTORY_REPRESENTATIVE_FILE="$DIRNAME/$DESIRED_FILENAME"
                   fi
             else
-                  echo -e "${COLOR_RED}Given file does not exist or file path contains invalid characters ${COLOR_YELLOW}${MP3}${COLOR_NORMAL}"
+                  echo -e "${COLOR_RED}Given file does not exist or file path contains invalid characters (multiple spaces?) ${COLOR_YELLOW}${MP3}${COLOR_NORMAL}"
             fi
         fi
     done  <<< $MP3S_IN_DIRECTORY # Done reading mp3s
@@ -226,14 +256,21 @@ do
                 # Some albums do not have any valid year, thus leaving an empty space in directory name
                 DESIRED_DIRNAME=`echo "$DESIRED_DIRNAME" | sed "s/\-  \-/\-/"`
 
+                # Removing special characters
+                DESIRED_DIRNAME=`echo $DESIRED_DIRNAME | sed 's/[?.&!@#$%^&*()_+]//'`
+
                 # Checking whether the MP3 file contains valid tags
                 if [ $? -eq 0 ]
                 then
                     # Computing the desired directoryname
                     DESIRED_DIRNAME="$BASE/$DESIRED_DIRNAME"
 
+                    # This is needed for FAT partitions only
+                    DESIRED_DIRNAME_LOWER=`echo $DESIRED_DIRNAME | tr '[:upper:]' '[:lower:]'`
+                    DIRNAME_LOWER=`echo $DIRNAME | tr '[:upper:]' '[:lower:]'`
+
                     # Renaming directory name only when needed
-                    if [ "$DESIRED_DIRNAME" != "$DIRNAME" ];
+                    if [ "$DESIRED_DIRNAME_LOWER" != "$DIRNAME_LOWER" ]
                     then
                         # TODO Add a protection whether $DESIRED_DIRNAME already exists
                         mv "$DIRNAME" "$DESIRED_DIRNAME" && DIRECTORY_RENAME_COUNTER=$((DIRECTORY_RENAME_COUNTER+1))
