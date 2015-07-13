@@ -158,6 +158,7 @@ do
 
     ADIRECTORY_REPRESENTATIVE_FILE=''
     PREVIOUS_ALBUM=''
+    PREVIOUS_ARTIST=''
 
     # Read list of MP3s inside the directory (withour recursion)
     MP3S_IN_DIRECTORY=`find "$ADIRECTORY" -type f -iname "*.mp3" -maxdepth 1 -printf "%p|"`
@@ -220,12 +221,13 @@ do
                     # Picking a representative file only if the file was not previously selected
                     if [ "$ADIRECTORY_REPRESENTATIVE_FILE" = '' ]
                     then
-                        if [ "$ALBUM" = "$PREVIOUS_ALBUM" ]
+                        if [ "$ALBUM" = "$PREVIOUS_ALBUM" ] && [ "$ARTIST" = "$PREVIOUS_ARTIST" ]
                         then
                             # Picking one valid file
                             ADIRECTORY_REPRESENTATIVE_FILE="$DIRNAME/$DESIRED_FILENAME"
                         else
                             PREVIOUS_ALBUM="$ALBUM"
+                            PREVIOUS_ARTIST="$ARTIST"
                         fi
                     fi
                 fi
