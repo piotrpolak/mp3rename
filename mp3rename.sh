@@ -6,12 +6,14 @@ SCRIPT_VERSION='0.1'
 # Issues:
 # TODO Solve problem with filenames containing multiple consecutive spaces
 # TODO Solve issues with directories containing & character
+# TODO Solve issues with titles containging URLS (starting with http://)
+# TODO Solve issues with albums containing "
 
 
 # Defining echo colors
 # http://misc.flogisoft.com/bash/tip_colors_and_formatting
 COLOR_NORMAL="\e[0m"
-COLOR_RED="\033[31m"
+COLOR_RED="\e[91m"
 COLOR_GREEN="\e[32m"
 COLOR_YELLOW="\e[33m"
 COLOR_BLUE="\e[36m"
@@ -88,6 +90,7 @@ then
     WORKING_DIRECTORY="$WORKING_DIRECTORY/"
 fi
 
+
 # Checking whether the working directory exits
 if [ ! -d "$WORKING_DIRECTORY" ]
 then
@@ -154,6 +157,7 @@ do
     # TODO Check if the directory is album directory (at least 3 files having the same album name)
 
     ADIRECTORY_REPRESENTATIVE_FILE=''
+    PREVIOUS_ALBUM=''
 
     # Read list of MP3s inside the directory (withour recursion)
     MP3S_IN_DIRECTORY=`find "$ADIRECTORY" -type f -iname "*.mp3" -maxdepth 1 -printf "%p|"`
@@ -182,13 +186,14 @@ do
                     # Parsing http://stackoverflow.com/questions/5285838/get-mp3-id3-v2-tags-using-id3v2
                     TITLE=`echo "$INFO" | sed -n '/^TIT2/s/^.*: //p' | sed 's/ (.*//'`
                     TRACK=`echo "$INFO" | sed -n '/^TRCK/s/^.*: //p' | sed 's/ (.*//' | sed 's/\/.*//'`
+                    ALBUM=`echo "$INFO" | sed -n '/^TALB/s/^.*: //p' | sed 's/ (.*//'` # Variable needed for checking whether the folder is an album
 
                     if [ "$TRACK" != '' ] && [ "$" != 'TITLE' ]
                     then
                         # Desired file name composed out of the MP3 info
                         DESIRED_FILENAME="${TRACK} ${TITLE}"
                         # Removing special characters
-                        DESIRED_FILENAME=`echo $DESIRED_FILENAME | sed 's/[?.&!@#$%^&*()_+\/\"]//'`
+                        DESIRED_FILENAME=`echo $DESIRED_FILENAME | sed -e "s/[?.&!@#$%^&*()_+\"\/]//g"`
                         # Adding extension
                         DESIRED_FILENAME="${DESIRED_FILENAME}.mp3"
 
@@ -212,9 +217,18 @@ do
                         fi
                     fi
 
-                    # Picking one valid file
-                    ADIRECTORY_REPRESENTATIVE_FILE="$DIRNAME/$DESIRED_FILENAME"
-                  fi
+                    # Picking a representative file only if the file was not previously selected
+                    if [ "$ADIRECTORY_REPRESENTATIVE_FILE" = '' ]
+                    then
+                        if [ "$ALBUM" = "$PREVIOUS_ALBUM" ]
+                        then
+                            # Picking one valid file
+                            ADIRECTORY_REPRESENTATIVE_FILE="$DIRNAME/$DESIRED_FILENAME"
+                        else
+                            PREVIOUS_ALBUM="$ALBUM"
+                        fi
+                    fi
+                fi
             else
                   echo -e "${COLOR_RED}Given file does not exist or file path contains invalid characters (multiple spaces?) ${COLOR_YELLOW}${MP3}${COLOR_NORMAL}"
             fi
@@ -257,7 +271,7 @@ do
                 DESIRED_DIRNAME=`echo "$DESIRED_DIRNAME" | sed "s/\-  \-/\-/"`
 
                 # Removing special characters
-                DESIRED_DIRNAME=`echo $DESIRED_DIRNAME | sed 's/[?.&!@#$%^&*()_+]//'`
+                DESIRED_DIRNAME=`echo $DESIRED_DIRNAME | sed -e "s/[?.&!@#$%^&*()_+\"\/]//g"`
 
                 # Checking whether the MP3 file contains valid tags
                 if [ $? -eq 0 ]
