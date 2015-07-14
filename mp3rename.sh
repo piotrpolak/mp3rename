@@ -154,7 +154,7 @@ FILE_RENAME_COUNTER=0;
 # The main loop
 while read -d "|" ADIRECTORY
 do
-    # TODO Check if the directory is album directory (at least 3 files having the same album name)
+    ADIRECTORY=`echo "$ADIRECTORY"`
 
     ADIRECTORY_REPRESENTATIVE_FILE=''
     PREVIOUS_ALBUM=''
@@ -169,6 +169,9 @@ do
 
     # For every MP3 file
     while read -d "|" MP3; do
+
+        MP3=`echo "$MP3"`
+
         # Checking if the path is not empty string
         if [ "$MP3" != "" ]
         then
@@ -194,7 +197,10 @@ do
                         # Desired file name composed out of the MP3 info
                         DESIRED_FILENAME="${TRACK} ${TITLE}"
                         # Removing special characters
-                        DESIRED_FILENAME=`echo $DESIRED_FILENAME | sed -e "s/[?.&!@#$%^&*()_+\"\/]//g"`
+                        DESIRED_FILENAME=`echo $DESIRED_FILENAME | sed -e "s/[?\.:|&!@#$%^&*()_+\"\/]//g"`
+                        # Removing multiple spaces
+                        DESIRED_FILENAME=`echo $DESIRED_FILENAME | sed -e "s/  / /g"`
+
                         # Adding extension
                         DESIRED_FILENAME="${DESIRED_FILENAME}.mp3"
 
@@ -221,7 +227,7 @@ do
                     # Picking a representative file only if the file was not previously selected
                     if [ "$ADIRECTORY_REPRESENTATIVE_FILE" = '' ]
                     then
-                        if [ "$ALBUM" = "$PREVIOUS_ALBUM" ] && [ "$ARTIST" = "$PREVIOUS_ARTIST" ]
+                        if [ "$ALBUM" != "" ] && [ "$ARTIST" != "" ] && [ "$ALBUM" = "$PREVIOUS_ALBUM" ] && [ "$ARTIST" = "$PREVIOUS_ARTIST" ]
                         then
                             # Picking one valid file
                             ADIRECTORY_REPRESENTATIVE_FILE="$DIRNAME/$DESIRED_FILENAME"
@@ -235,14 +241,11 @@ do
                   echo -e "${COLOR_RED}Given file does not exist or file path contains invalid characters (multiple spaces?) ${COLOR_YELLOW}${MP3}${COLOR_NORMAL}"
             fi
         fi
-    done  <<< $MP3S_IN_DIRECTORY # Done reading mp3s
+    done  <<< "$MP3S_IN_DIRECTORY" # Done reading mp3s, quotation is required for multiple spaces
 
     # If there were any music files inside the directory
     if [ "$ADIRECTORY_REPRESENTATIVE_FILE" != '' ]
     then
-
-        # TODO Checking whether the directory has no subdirectories
-
         # Renaming directories
         DIRNAME=`dirname "$ADIRECTORY_REPRESENTATIVE_FILE"`
 
@@ -271,9 +274,10 @@ do
 
                 # Some albums do not have any valid year, thus leaving an empty space in directory name
                 DESIRED_DIRNAME=`echo "$DESIRED_DIRNAME" | sed "s/\-  \-/\-/"`
-
                 # Removing special characters
-                DESIRED_DIRNAME=`echo $DESIRED_DIRNAME | sed -e "s/[?.&!@#$%^&*()_+\"\/]//g"`
+                DESIRED_DIRNAME=`echo $DESIRED_DIRNAME | sed -e "s/[?\.:|&!@#$%^&*()_+\"\/]//g"`
+                # Removing multiple spaces
+                DESIRED_DIRNAME=`echo $DESIRED_DIRNAME | sed -e "s/  / /g"`
 
                 # Checking whether the MP3 file contains valid tags
                 if [ $? -eq 0 ]
@@ -293,11 +297,11 @@ do
                     fi
                 fi
             else
-                echo -e "${COLOR_RED}No valid artist for file $ADIRECTORY_REPRESENTATIVE_FILE${COLOR_NORMAL}"
+                echo -e "${COLOR_RED}No valid artist or album for file ${COLOR_YELLOW}$ADIRECTORY_REPRESENTATIVE_FILE${COLOR_NORMAL}"
             fi
         fi
     fi
-done <<< $DIRECTORIES
+done <<< "$DIRECTORIES" # quotation is required for multiple spaces
 
 echo -e "${COLOR_GREEN}Renamed ${COLOR_YELLOW}$FILE_RENAME_COUNTER${COLOR_GREEN} files and ${COLOR_YELLOW}$DIRECTORY_RENAME_COUNTER${COLOR_GREEN} directories${COLOR_NORMAL}"
 exit 0
