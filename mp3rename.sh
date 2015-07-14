@@ -1,14 +1,11 @@
 #!/bin/bash
 
 # Defining versions and authors
-SCRIPT_VERSION='0.1'
+SCRIPT_VERSION='0.2'
 
 # Issues:
-# TODO Solve problem with filenames containing multiple consecutive spaces
-# TODO Solve issues with directories containing & character
+# TODO Solve issues with directories containing & character (amp not displayed)
 # TODO Solve issues with titles containging URLS (starting with http://)
-# TODO Solve issues with albums containing "
-
 
 # Defining echo colors
 # http://misc.flogisoft.com/bash/tip_colors_and_formatting
@@ -23,7 +20,7 @@ OPTION_HELP=false
 OPTION_HAS_UNKNOWN_FLAG=false
 OPTION_NON_MP3_NOR_FLAC_FILES=false
 
-# arguments
+# Arguments array
 declare -a ARGUMENTS=()
 
 echo
@@ -71,7 +68,7 @@ if [ $OPTION_HELP == true ]
 then
     echo "Renames MP3 files and their directories according to ID3 tags"
     echo
-    echo -e "Syntax: ${COLOR_GREEN}./mp3rename.sh FILE [--help] [--remove-non-music-files]${COLOR_NORMAL}"
+    echo -e "Syntax: ${COLOR_GREEN}./mp3rename.sh DIRECTORY [--help] [--remove-non-music-files]${COLOR_NORMAL}"
     echo
     echo -e "  ${COLOR_YELLOW}--help${COLOR_NORMAL}                        Displays (this) help screen"
     echo -e "  ${COLOR_YELLOW}--remove-non-music-files${COLOR_NORMAL}      Removes files different than MP3/FLAC"
@@ -154,23 +151,19 @@ FILE_RENAME_COUNTER=0;
 # The main loop
 while read -d "|" ADIRECTORY
 do
-    ADIRECTORY=`echo "$ADIRECTORY"`
-
     ADIRECTORY_REPRESENTATIVE_FILE=''
     PREVIOUS_ALBUM=''
     PREVIOUS_ARTIST=''
 
     # Read list of MP3s inside the directory (withour recursion)
-    MP3S_IN_DIRECTORY=`find "$ADIRECTORY" -type f -iname "*.mp3" -maxdepth 1 -printf "%p|"`
-    # if [ $? -eq 0 ]
-    # then
-    #     echo -e "${COLOR_RED}Given file does not exist or file path contains invalid characters (multiple spaces?) ${COLOR_YELLOW}${ADIRECTORY}${COLOR_NORMAL}"
-    # fi
+    MP3S_IN_DIRECTORY=`find "$ADIRECTORY" -type f -iname "*.mp3" -maxdepth 1 -printf "%p|" 2> /dev/null`
+    if [ $? -ne 0 ]
+    then
+        echo -e "${COLOR_RED}Given file does not exist or file path contains invalid characters ${COLOR_YELLOW}${ADIRECTORY}${COLOR_NORMAL}"
+    fi
 
     # For every MP3 file
     while read -d "|" MP3; do
-
-        MP3=`echo "$MP3"`
 
         # Checking if the path is not empty string
         if [ "$MP3" != "" ]
@@ -190,9 +183,8 @@ do
                     # Parsing http://stackoverflow.com/questions/5285838/get-mp3-id3-v2-tags-using-id3v2
                     TITLE=`echo "$INFO" | sed -n '/^TIT2/s/^.*: //p' | sed 's/ (.*//'`
                     TRACK=`echo "$INFO" | sed -n '/^TRCK/s/^.*: //p' | sed 's/ (.*//' | sed 's/\/.*//'`
-                    ALBUM=`echo "$INFO" | sed -n '/^TALB/s/^.*: //p' | sed 's/ (.*//'` # Variable needed for checking whether the folder is an album
 
-                    if [ "$TRACK" != '' ] && [ "$" != 'TITLE' ]
+                    if [ "$TRACK" != '' ] && [ "$TITLE" != '' ]
                     then
                         # Desired file name composed out of the MP3 info
                         DESIRED_FILENAME="${TRACK} ${TITLE}"
@@ -200,7 +192,6 @@ do
                         DESIRED_FILENAME=`echo $DESIRED_FILENAME | sed -e "s/[?\.:|&!@#$%^&*()_+\"\/]//g"`
                         # Removing multiple spaces
                         DESIRED_FILENAME=`echo $DESIRED_FILENAME | sed -e "s/  / /g"`
-
                         # Adding extension
                         DESIRED_FILENAME="${DESIRED_FILENAME}.mp3"
 
@@ -214,31 +205,40 @@ do
                         MP3_FILENAME=`basename "$MP3"`
 
                         # This is needed for FAT partitions only
-                        DESIRED_FILENAME_LOWER=`echo $DESIRED_FILENAME | tr '[:upper:]' '[:lower:]'`
-                        MP3_FILENAME_LOWER=`echo $MP3_FILENAME | tr '[:upper:]' '[:lower:]'`
+                        # Please keep the variables quoted otherwise multiple spaces will be ignored!
+                        DESIRED_FILENAME_LOWER=`echo "$DESIRED_FILENAME" | tr '[:upper:]' '[:lower:]'`
+                        MP3_FILENAME_LOWER=`echo "$MP3_FILENAME" | tr '[:upper:]' '[:lower:]'`
 
                         # Rename file only if the newly generated filename is different
                         if [ "$DESIRED_FILENAME_LOWER" != "$MP3_FILENAME_LOWER" ];
                         then
-                            mv "$MP3" "$DIRNAME/$DESIRED_FILENAME" && FILE_RENAME_COUNTER=$((FILE_RENAME_COUNTER+1))
+                            mv "$MP3" "$DIRNAME/$DESIRED_FILENAME" && FILE_RENAME_COUNTER=$((FILE_RENAME_COUNTER+1)) && echo -en "${COLOR_GREEN}.${COLOR_NORMAL}"
                         fi
-                    fi
 
-                    # Picking a representative file only if the file was not previously selected
-                    if [ "$ADIRECTORY_REPRESENTATIVE_FILE" = '' ]
-                    then
-                        if [ "$ALBUM" != "" ] && [ "$ARTIST" != "" ] && [ "$ALBUM" = "$PREVIOUS_ALBUM" ] && [ "$ARTIST" = "$PREVIOUS_ARTIST" ]
+                        # Picking a representative file only if the file was not previously selected
+                        if [ "$ADIRECTORY_REPRESENTATIVE_FILE" = '' ]
                         then
-                            # Picking one valid file
-                            ADIRECTORY_REPRESENTATIVE_FILE="$DIRNAME/$DESIRED_FILENAME"
-                        else
-                            PREVIOUS_ALBUM="$ALBUM"
-                            PREVIOUS_ARTIST="$ARTIST"
-                        fi
-                    fi
-                fi
+                            # Parsing album and artist
+                            ALBUM=`echo "$INFO" | sed -n '/^TALB/s/^.*: //p' | sed 's/ (.*//'` # Variable needed for checking whether the folder is an album
+                            ARTIST=`echo "$INFO" | sed -n '/^TALB/s/^.*: //p' | sed 's/ (.*//'` # Variable needed for checking whether the folder is an album
+
+                            # Both album and artist must be non-empty and must be equal to the previously picked values
+                            if [ "$ALBUM" != '' ] && [ "$ARTIST" != '' ]
+                            then
+                                if [ "$ALBUM" = "$PREVIOUS_ALBUM" ] && [ "$ARTIST" = "$PREVIOUS_ARTIST" ]
+                                then
+                                    # Picking one valid file
+                                    ADIRECTORY_REPRESENTATIVE_FILE="$DIRNAME/$DESIRED_FILENAME"
+                                else
+                                    PREVIOUS_ALBUM="$ALBUM"
+                                    PREVIOUS_ARTIST="$ARTIST"
+                                fi
+                            fi # End checking album and artist
+                        fi # End checking whether the representative file was selected
+                    fi # End checking track and title
+                fi # End checking exit code
             else
-                  echo -e "${COLOR_RED}Given file does not exist or file path contains invalid characters (multiple spaces?) ${COLOR_YELLOW}${MP3}${COLOR_NORMAL}"
+                  echo -e "${COLOR_RED}Given file does not exist or file path contains invalid characters ${COLOR_YELLOW}${MP3}${COLOR_NORMAL}"
             fi
         fi
     done  <<< "$MP3S_IN_DIRECTORY" # Done reading mp3s, quotation is required for multiple spaces
@@ -263,7 +263,8 @@ do
             ALBUM=`echo "$INFO" | sed -n '/^TALB/s/^.*: //p' | sed 's/ (.*//'`
             YEAR=`echo "$INFO" | sed -n '/^TYER/s/^.*: //p' | sed 's/ (.*//'`
 
-            # Extra protection against timestamps - taking only 4 first characters
+            # Taking only 4 first characters out of the year variable
+            # This is an extra protection against incorrectly encoded tags storing timestamps
             YEAR=${YEAR:0:4}
 
             # Checking whether the minimal required tags are specified
@@ -271,37 +272,35 @@ do
             then
                 # Computing directory name out of the tags
                 DESIRED_DIRNAME="${ARTIST} - ${YEAR} - ${ALBUM}"
-
                 # Some albums do not have any valid year, thus leaving an empty space in directory name
                 DESIRED_DIRNAME=`echo "$DESIRED_DIRNAME" | sed "s/\-  \-/\-/"`
                 # Removing special characters
                 DESIRED_DIRNAME=`echo $DESIRED_DIRNAME | sed -e "s/[?\.:|&!@#$%^&*()_+\"\/]//g"`
                 # Removing multiple spaces
                 DESIRED_DIRNAME=`echo $DESIRED_DIRNAME | sed -e "s/  / /g"`
+                # Computing the desired directoryname
+                DESIRED_DIRNAME="$BASE/$DESIRED_DIRNAME"
 
-                # Checking whether the MP3 file contains valid tags
-                if [ $? -eq 0 ]
+                # This is needed for FAT partitions only
+                # Please keep the variables quoted otherwise multiple spaces will be ignored!
+                DESIRED_DIRNAME_LOWER=`echo "$DESIRED_DIRNAME" | tr '[:upper:]' '[:lower:]'`
+                DIRNAME_LOWER=`echo "$DIRNAME" | tr '[:upper:]' '[:lower:]'`
+
+                # Renaming directory name only when needed
+                if [ "$DESIRED_DIRNAME_LOWER" != "$DIRNAME_LOWER" ]
                 then
-                    # Computing the desired directoryname
-                    DESIRED_DIRNAME="$BASE/$DESIRED_DIRNAME"
-
-                    # This is needed for FAT partitions only
-                    DESIRED_DIRNAME_LOWER=`echo $DESIRED_DIRNAME | tr '[:upper:]' '[:lower:]'`
-                    DIRNAME_LOWER=`echo $DIRNAME | tr '[:upper:]' '[:lower:]'`
-
-                    # Renaming directory name only when needed
-                    if [ "$DESIRED_DIRNAME_LOWER" != "$DIRNAME_LOWER" ]
-                    then
-                        # TODO Add a protection whether $DESIRED_DIRNAME already exists
-                        mv "$DIRNAME" "$DESIRED_DIRNAME" && DIRECTORY_RENAME_COUNTER=$((DIRECTORY_RENAME_COUNTER+1))
-                    fi
+                    # TODO Add a protection whether $DESIRED_DIRNAME already exists
+                    mv "$DIRNAME" "$DESIRED_DIRNAME" && DIRECTORY_RENAME_COUNTER=$((DIRECTORY_RENAME_COUNTER+1))
                 fi
             else
                 echo -e "${COLOR_RED}No valid artist or album for file ${COLOR_YELLOW}$ADIRECTORY_REPRESENTATIVE_FILE${COLOR_NORMAL}"
             fi
         fi
+    else
+        # TODO Check whether the directory is album directory and prevent this error from being displayed for directories with no MP3s
+        echo -e "${COLOR_RED}No ID3 tags for directory ${COLOR_YELLOW}$ADIRECTORY${COLOR_NORMAL}"
     fi
-done <<< "$DIRECTORIES" # quotation is required for multiple spaces
+done <<< "$DIRECTORIES" # Quotation is required for multiple spaces
 
 echo -e "${COLOR_GREEN}Renamed ${COLOR_YELLOW}$FILE_RENAME_COUNTER${COLOR_GREEN} files and ${COLOR_YELLOW}$DIRECTORY_RENAME_COUNTER${COLOR_GREEN} directories${COLOR_NORMAL}"
 exit 0
