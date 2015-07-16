@@ -161,6 +161,7 @@ do
     # Helper variables used to detect whether the directory is an album
     PREVIOUS_ALBUM=''
     PREVIOUS_ARTIST=''
+    ADIRECTORY_REPEATING_ALBUM_AND_ARTIST=0;
 
     # Read list of MP3s inside the directory (withour recursion)
     MP3S_IN_DIRECTORY=`find "$ADIRECTORY" -type f -iname "*.mp3" -maxdepth 1 -printf "%p|" 2> /dev/null`
@@ -237,13 +238,24 @@ do
                             then
                                 if [ "$ALBUM" = "$PREVIOUS_ALBUM" ] && [ "$ARTIST" = "$PREVIOUS_ARTIST" ]
                                 then
-                                    # Picking one valid file
-                                    ADIRECTORY_REPRESENTATIVE_FILE="$DIRNAME/$DESIRED_FILENAME"
-                                else
-                                    PREVIOUS_ALBUM="$ALBUM"
-                                    PREVIOUS_ARTIST="$ARTIST"
+                                    # Incrementing counter
+                                    ADIRECTORY_REPEATING_ALBUM_AND_ARTIST=$((ADIRECTORY_REPEATING_ALBUM_AND_ARTIST+1))
+
+                                    # Picking one valid file if there are at least 4 consecutive files of the same album and artist
+                                    if [ $ADIRECTORY_REPEATING_ALBUM_AND_ARTIST -ge 4 ]
+                                    then
+                                        ADIRECTORY_REPRESENTATIVE_FILE="$DIRNAME/$DESIRED_FILENAME"
+                                    fi
                                 fi
+                            else
+                                # Reseting the counter
+                                ADIRECTORY_REPEATING_ALBUM_AND_ARTIST=0
                             fi # End checking album and artist
+
+                            # Saving variables for next loop, outside the IF
+                            PREVIOUS_ALBUM="$ALBUM"
+                            PREVIOUS_ARTIST="$ARTIST"
+
                         fi # End checking whether the representative file was selected
                     fi # End checking track and title
                 fi # End checking exit code
@@ -311,7 +323,7 @@ do
         # Preventing from displaying this error for directories having other directories
         if [ $ADIRECTORY_HAS_MP3_FILES = true ]
         then
-            echo -e "${COLOR_RED}No ID3 tags for directory ${COLOR_YELLOW}$ADIRECTORY${COLOR_NORMAL}"
+            echo -e "${COLOR_RED}No ID3 tags or not an album for directory ${COLOR_YELLOW}$ADIRECTORY${COLOR_NORMAL}"
         fi
     fi
 done <<< "$DIRECTORIES" # Quotation is required for multiple spaces
