@@ -6,6 +6,8 @@ SCRIPT_VERSION='0.2'
 # Issues:
 # TODO Solve issues with directories containing & character (amp not displayed)
 # TODO Solve issues with titles containging URLS (starting with http://)
+# TODO For sets, do not use artist name in directory name (majestic casual)
+# TODO For mp3 files in sets the naming convention should be TRACK ARTIST - TITLE
 
 # Defining echo colors
 # http://misc.flogisoft.com/bash/tip_colors_and_formatting
@@ -151,7 +153,12 @@ FILE_RENAME_COUNTER=0;
 # The main loop
 while read -d "|" ADIRECTORY
 do
+    # Representative file containing tags to be taken when renaming directory
     ADIRECTORY_REPRESENTATIVE_FILE=''
+    # Variable helping to detect whether a directory has MP3 files and should be renamed or just a group of albums
+    ADIRECTORY_HAS_MP3_FILES=false
+
+    # Helper variables used to detect whether the directory is an album
     PREVIOUS_ALBUM=''
     PREVIOUS_ARTIST=''
 
@@ -171,6 +178,9 @@ do
             # Checking whether the file exists and the filename is valid
             if [ -f "$MP3" ]
             then
+                # Overwrite variable
+                ADIRECTORY_HAS_MP3_FILES=true
+
                 # Getting MP3 info
                 INFO=`id3v2 -l "$MP3" 2> /dev/null`
 
@@ -297,8 +307,12 @@ do
             fi
         fi
     else
-        # TODO Check whether the directory is album directory and prevent this error from being displayed for directories with no MP3s
-        echo -e "${COLOR_RED}No ID3 tags for directory ${COLOR_YELLOW}$ADIRECTORY${COLOR_NORMAL}"
+        # Displaying warning for directories having MP3 files but no valid tags
+        # Preventing from displaying this error for directories having other directories
+        if [ $ADIRECTORY_HAS_MP3_FILES = true ]
+        then
+            echo -e "${COLOR_RED}No ID3 tags for directory ${COLOR_YELLOW}$ADIRECTORY${COLOR_NORMAL}"
+        fi
     fi
 done <<< "$DIRECTORIES" # Quotation is required for multiple spaces
 
