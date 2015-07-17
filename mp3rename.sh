@@ -6,8 +6,23 @@ SCRIPT_VERSION='0.2'
 # Issues:
 # TODO Solve issues with directories containing & character (amp not displayed)
 # TODO Solve issues with titles containging URLS (starting with http://)
-# TODO For sets, do not use artist name in directory name (majestic casual)
+# TODO Detect sets (ex Majestic), for sets do not use artist name in directory name (majestic casual)
 # TODO For mp3 files in sets the naming convention should be TRACK ARTIST - TITLE
+# TODO Implement scenatio for colisions with file/directory names
+
+# Sample output
+# id3v2 tag info for file.mp3:
+# TALB (Album/Movie/Show title): Majestic Casual - Chapter 2
+# TPE1 (Lead performer(s)/Soloist(s)): AlunaGeorge
+# TPE2 (Band/orchestra/accompaniment): Various Artists
+# TCOM (Composer): G. Reid & A. Francis
+# TCON (Content type): Electronic (52)
+# TCMP ():  frame
+# TIT2 (Title/songname/content description): You Know You Like It (Wilfred Giroux Remix)
+# TRCK (Track number/Position in set): 1
+# TYER (Year): 2014
+# APIC (Attached picture): ()[, 3]: image/jpeg, 239811 bytes
+# Parsing http://stackoverflow.com/questions/5285838/get-mp3-id3-v2-tags-using-id3v2
 
 # Defining echo colors
 # http://misc.flogisoft.com/bash/tip_colors_and_formatting
@@ -191,7 +206,7 @@ do
                     # Geting directory
                     DIRNAME=`dirname "$MP3"`
 
-                    # Parsing http://stackoverflow.com/questions/5285838/get-mp3-id3-v2-tags-using-id3v2
+                    # Parsing title and track
                     TITLE=`echo "$INFO" | sed -n '/^TIT2/s/^.*: //p' | sed 's/ (.*//'`
                     TRACK=`echo "$INFO" | sed -n '/^TRCK/s/^.*: //p' | sed 's/ (.*//' | sed 's/\/.*//'`
 
@@ -231,11 +246,12 @@ do
                         then
                             # Parsing album and artist
                             ALBUM=`echo "$INFO" | sed -n '/^TALB/s/^.*: //p' | sed 's/ (.*//'` # Variable needed for checking whether the folder is an album
-                            ARTIST=`echo "$INFO" | sed -n '/^TALB/s/^.*: //p' | sed 's/ (.*//'` # Variable needed for checking whether the folder is an album
+                            ARTIST=`echo "$INFO" | sed -n '/^TPE1/s/^.*: //p' | sed 's/ (.*//'` # Variable needed for checking whether the folder is an album
 
                             # Both album and artist must be non-empty and must be equal to the previously picked values
                             if [ "$ALBUM" != '' ] && [ "$ARTIST" != '' ]
                             then
+                                # TODO Check whether lowerecase artist TPE2 contains "various"
                                 if [ "$ALBUM" = "$PREVIOUS_ALBUM" ] && [ "$ARTIST" = "$PREVIOUS_ARTIST" ]
                                 then
                                     # Incrementing counter
