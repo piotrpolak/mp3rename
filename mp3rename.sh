@@ -9,6 +9,11 @@ SCRIPT_VERSION='0.2'
 # TODO Detect sets (ex Majestic), for sets do not use artist name in directory name (majestic casual)
 # TODO For mp3 files in sets the naming convention should be TRACK ARTIST - TITLE
 # TODO Implement scenatio for colisions with file/directory names
+# TODO Issues with CD1 and CD2 (Tool the best of)
+
+# TODO Implement --dry-run option
+# TODO Implement --dirs-only option
+# TODO Implement --files-only option
 
 # Sample output
 # id3v2 tag info for file.mp3:
@@ -147,7 +152,7 @@ then
     while read -d "|" NON_MP3_NOR_FLAC_FILE
     do
         rm "$NON_MP3_NOR_FLAC_FILE" && COUNTER=$((COUNTER+1))
-    done <<< $NON_MP3_NOR_FLAC_FILES
+    done <<< "$NON_MP3_NOR_FLAC_FILES" # Quotation is required for multiple spaces
 
     echo -e "${COLOR_GREEN}Removed ${COLOR_YELLOW}$COUNTER${COLOR_GREEN} non MP3/FLAC files${COLOR_NORMAL}"
     echo
@@ -331,7 +336,7 @@ do
                     mv "$DIRNAME" "$DESIRED_DIRNAME" && DIRECTORY_RENAME_COUNTER=$((DIRECTORY_RENAME_COUNTER+1))
                 fi
             else
-                echo -e "${COLOR_RED}No valid artist or album for file ${COLOR_YELLOW}$ADIRECTORY_REPRESENTATIVE_FILE${COLOR_NORMAL}"
+                echo -e "\n${COLOR_RED}No valid artist or album for file ${COLOR_YELLOW}$ADIRECTORY_REPRESENTATIVE_FILE${COLOR_NORMAL}"
             fi
         fi
     else
