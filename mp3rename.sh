@@ -151,7 +151,7 @@ fi
 ################################################################################
 # Removing non MP3/FLAC files
 ################################################################################
-if [ OPTION_NON_MP3_NOR_FLAC_FILES = true ]
+if [ $OPTION_NON_MP3_NOR_FLAC_FILES = true ]
 then
     echo "Removing files other that MP3 and FLAC..."
     NON_MP3_NOR_FLAC_FILES=`find $WORKING_DIRECTORY*/ -type f -not -iname "*.mp3" -not -iname "*.flac" -printf "%p|"`
