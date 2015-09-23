@@ -14,6 +14,7 @@ SCRIPT_VERSION='0.2.1'
 # TODO Implement --dry-run option
 # TODO Implement --dirs-only option
 # TODO Implement --files-only option
+# TODO Fix move folder bug when there are less than 4 files in the folder
 
 # Sample output
 # id3v2 tag info for file.mp3:
@@ -322,6 +323,7 @@ do
                                     ADIRECTORY_REPEATING_ALBUM_AND_ARTIST=$((ADIRECTORY_REPEATING_ALBUM_AND_ARTIST+1))
 
                                     # Picking one valid file if there are at least 4 consecutive files of the same album and artist
+                                    # TODO Make sure there are more than 4 songs in the folder
                                     if [ $ADIRECTORY_REPEATING_ALBUM_AND_ARTIST -ge 4 ]
                                     then
                                         ADIRECTORY_REPRESENTATIVE_FILE="$DIRNAME/$DESIRED_FILENAME"
