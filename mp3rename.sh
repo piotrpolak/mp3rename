@@ -11,7 +11,6 @@ SCRIPT_VERSION='0.2.1'
 # TODO Implement scenatio for colisions with file/directory names
 # TODO Issues with CD1 and CD2 (Tool the best of)
 
-# TODO Implement --verbose option
 # TODO Implement --dry-run option
 # TODO Implement --dirs-only option
 # TODO Implement --files-only option
@@ -235,6 +234,21 @@ do
                     # Parsing title and track
                     TITLE=`echo "$INFO" | sed -n '/^TIT2/s/^.*: //p' | sed 's/ (.*//'`
                     TRACK=`echo "$INFO" | sed -n '/^TRCK/s/^.*: //p' | sed 's/ (.*//' | sed 's/\/.*//'`
+
+                    # Try TT2 if TIT2 is not present (some iTunes encoded mp3)
+                    if [ "$TITLE" = '' ]
+                    then
+                        TITLE=`echo "$INFO" | sed -n '/^TT2/s/^.*: //p' | sed 's/ (.*//'`
+                    fi
+
+                    # Try TRK in case TRCK is empty  (some iTunes encoded mp3)
+                    if [ "$TRACK" = '' ]
+                    then
+                        TRACK=`echo "$INFO" | sed -n '/^TRK/s/^.*: //p' | sed 's/ (.*//' | sed 's/\/.*//'`
+                    fi
+
+                    # Removing zeros from the begining of the track number
+                    TRACK=$(echo $TRACK | sed 's/^0*//')
 
                     if [ "$TRACK" != '' ] && [ "$TITLE" != '' ]
                     then
