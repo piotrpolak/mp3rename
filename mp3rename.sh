@@ -11,6 +11,7 @@ SCRIPT_VERSION='0.2.1'
 # TODO Implement scenatio for colisions with file/directory names
 # TODO Issues with CD1 and CD2 (Tool the best of)
 
+# TODO Implement --verbose option
 # TODO Implement --dry-run option
 # TODO Implement --dirs-only option
 # TODO Implement --files-only option
@@ -134,7 +135,10 @@ fi
 which id3v2 > /dev/null
 if [ $? -ne 0 ]
 then
-    echo -e "${COLOR_RED}id3v2 is not installed, aborting${COLOR_NORMAL}"
+    echo -e "${COLOR_RED}ERROR: id3v2 is not installed${COLOR_NORMAL}"
+    echo -e "${COLOR_RED}Please install id3v2 by executing ${COLOR_YELLOW}sudo apt-get install id3v2${COLOR_NORMAL}"
+    echo -e "${COLOR_RED}Aborting${COLOR_NORMAL}"
+    echo
     exit -1
 fi
 
