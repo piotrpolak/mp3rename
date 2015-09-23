@@ -53,12 +53,12 @@ echo -e "MP3 rename tool ${COLOR_BLUE}$SCRIPT_VERSION${COLOR_NORMAL}"
 ################################################################################
 for PARAM in $*
 do
-    if [ "${PARAM:0:2}" == "--" ]
+    if [ "${PARAM:0:2}" = "--" ]
     then
-        if [ "$PARAM" == '--help' ]
+        if [ "$PARAM" = '--help' ]
         then
             OPTION_HELP=true
-        elif [ "$PARAM" == '--remove-non-music-files' ]
+        elif [ "$PARAM" = '--remove-non-music-files' ]
         then
             OPTION_NON_MP3_NOR_FLAC_FILES_=true
         else
@@ -76,7 +76,7 @@ echo
 ################################################################################
 # Displaying error message for unknown flag
 ################################################################################
-if [ $OPTION_HAS_UNKNOWN_FLAG == true ]
+if [ $OPTION_HAS_UNKNOWN_FLAG = true ]
 then
     echo -e "Aborting, for help type ${COLOR_GREEN}./mp3rename.sh --help${COLOR_NORMAL}"
     exit 9
@@ -86,7 +86,7 @@ fi
 ################################################################################
 # Displaying help page
 ################################################################################
-if [ $OPTION_HELP == true ]
+if [ $OPTION_HELP = true ]
 then
     echo "Renames MP3 files and their directories according to ID3 tags"
     echo
@@ -191,8 +191,8 @@ do
     fi
 
     # For every MP3 file
-    while read -d "|" MP3; do
-
+    while read -d "|" MP3
+    do
         # Checking if the path is not empty string
         if [ "$MP3" != "" ]
         then
@@ -227,7 +227,7 @@ do
                         DESIRED_FILENAME="${DESIRED_FILENAME}.mp3"
 
                         # Appending 0 to songs having number less than 10
-                        if [ "${DESIRED_FILENAME:1:1}" == ' ' ]
+                        if [ "${DESIRED_FILENAME:1:1}" = ' ' ]
                         then
                           DESIRED_FILENAME="0$DESIRED_FILENAME"
                         fi
