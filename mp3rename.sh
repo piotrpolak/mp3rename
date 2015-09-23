@@ -300,6 +300,18 @@ do
                             ALBUM=`echo "$INFO" | sed -n '/^TALB/s/^.*: //p' | sed 's/ (.*//'` # Variable needed for checking whether the folder is an album
                             ARTIST=`echo "$INFO" | sed -n '/^TPE1/s/^.*: //p' | sed 's/ (.*//'` # Variable needed for checking whether the folder is an album
 
+                            # Try TP1 if TALB is not present (some iTunes encoded mp3)
+                            if [ "$ALBUM" = '' ]
+                            then
+                                ALBUM=`echo "$INFO" | sed -n '/^TAL/s/^.*: //p' | sed 's/ (.*//'`
+                            fi
+
+                            # Try TP1 if TPE1 is not present (some iTunes encoded mp3)
+                            if [ "$ARTIST" = '' ]
+                            then
+                                ARTIST=`echo "$INFO" | sed -n '/^TP1/s/^.*: //p' | sed 's/ (.*//'`
+                            fi
+
                             # Both album and artist must be non-empty and must be equal to the previously picked values
                             if [ "$ALBUM" != '' ] && [ "$ARTIST" != '' ]
                             then
