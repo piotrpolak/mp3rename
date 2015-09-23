@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Defining versions and authors
-SCRIPT_VERSION='0.2'
+SCRIPT_VERSION='0.2.1'
 
 # Issues:
 # TODO Solve issues with directories containing & character (amp not displayed)
@@ -60,7 +60,7 @@ do
             OPTION_HELP=true
         elif [ "$PARAM" = '--remove-non-music-files' ]
         then
-            OPTION_NON_MP3_NOR_FLAC_FILES_=true
+            OPTION_NON_MP3_NOR_FLAC_FILES=true
         else
             OPTION_HAS_UNKNOWN_FLAG=true
             echo -e "${COLOR_RED}Unknown flag $e${COLOR_NORMAL}"
