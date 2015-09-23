@@ -42,6 +42,7 @@ COLOR_BLUE="\e[36m"
 OPTION_HELP=false
 OPTION_HAS_UNKNOWN_FLAG=false
 OPTION_NON_MP3_NOR_FLAC_FILES=false
+OPTION_VERBOSE=false
 
 # Arguments array
 declare -a ARGUMENTS=()
@@ -62,6 +63,9 @@ do
         elif [ "$PARAM" = '--remove-non-music-files' ]
         then
             OPTION_NON_MP3_NOR_FLAC_FILES=true
+        elif [ "$PARAM" = '--verbose' ]
+        then
+            OPTION_VERBOSE=true
         else
             OPTION_HAS_UNKNOWN_FLAG=true
             echo -e "${COLOR_RED}Unknown flag $e${COLOR_NORMAL}"
@@ -91,10 +95,11 @@ if [ $OPTION_HELP = true ]
 then
     echo "Renames MP3 files and their directories according to ID3 tags"
     echo
-    echo -e "Syntax: ${COLOR_GREEN}./mp3rename.sh DIRECTORY [--help] [--remove-non-music-files]${COLOR_NORMAL}"
+    echo -e "Syntax: ${COLOR_GREEN}./mp3rename.sh DIRECTORY [--help] [--remove-non-music-files] [--verbose]${COLOR_NORMAL}"
     echo
     echo -e "  ${COLOR_YELLOW}--help${COLOR_NORMAL}                        Displays (this) help screen"
     echo -e "  ${COLOR_YELLOW}--remove-non-music-files${COLOR_NORMAL}      Removes files different than MP3/FLAC"
+    echo -e "  ${COLOR_YELLOW}--verbose${COLOR_NORMAL}                     Displays extra debug information"
     echo
     echo -e "Script maintained by ${COLOR_BLUE}piotr@polak.ro${COLOR_NORMAL}"
     echo
@@ -156,6 +161,18 @@ then
     while read -d "|" NON_MP3_NOR_FLAC_FILE
     do
         rm "$NON_MP3_NOR_FLAC_FILE" && COUNTER=$((COUNTER+1))
+
+        # Printing debug information
+        if [ $? -eq 0 ]
+        then
+            if [ $OPTION_VERBOSE = true ]
+            then
+                echo "Removed $NON_MP3_NOR_FLAC_FILE"
+            else
+                echo -en "${COLOR_GREEN}.${COLOR_NORMAL}"
+            fi
+        fi
+
     done <<< "$NON_MP3_NOR_FLAC_FILES" # Quotation is required for multiple spaces
 
     echo -e "${COLOR_GREEN}Removed ${COLOR_YELLOW}$COUNTER${COLOR_GREEN} non MP3/FLAC files${COLOR_NORMAL}"
@@ -233,7 +250,7 @@ do
                         # Appending 0 to songs having number less than 10
                         if [ "${DESIRED_FILENAME:1:1}" = ' ' ]
                         then
-                          DESIRED_FILENAME="0$DESIRED_FILENAME"
+                            DESIRED_FILENAME="0$DESIRED_FILENAME"
                         fi
 
                         # Old filename
@@ -247,7 +264,19 @@ do
                         # Rename file only if the newly generated filename is different
                         if [ "$DESIRED_FILENAME_LOWER" != "$MP3_FILENAME_LOWER" ];
                         then
-                            mv "$MP3" "$DIRNAME/$DESIRED_FILENAME" && FILE_RENAME_COUNTER=$((FILE_RENAME_COUNTER+1)) && echo -en "${COLOR_GREEN}.${COLOR_NORMAL}"
+                            mv "$MP3" "$DIRNAME/$DESIRED_FILENAME" && FILE_RENAME_COUNTER=$((FILE_RENAME_COUNTER+1))
+
+                            # Printing debug information
+                            if [ $? -eq 0 ]
+                            then
+                                if [ $OPTION_VERBOSE = true ]
+                                then
+                                    echo "Renamed $MP3 to $DIRNAME/$DESIRED_FILENAME"
+                                else
+                                    echo -en "${COLOR_GREEN}.${COLOR_NORMAL}"
+                                fi
+                            fi
+
                         fi
 
                         # Picking a representative file only if the file was not previously selected
@@ -338,6 +367,18 @@ do
                 then
                     # TODO Add a protection whether $DESIRED_DIRNAME already exists
                     mv "$DIRNAME" "$DESIRED_DIRNAME" && DIRECTORY_RENAME_COUNTER=$((DIRECTORY_RENAME_COUNTER+1))
+
+                    # Printing debug information
+                    if [ $? -eq 0 ]
+                    then
+                        if [ $OPTION_VERBOSE = true ]
+                        then
+                            echo "Moved $DIRNAME" "$DESIRED_DIRNAME"
+                        else
+                            echo -en "${COLOR_GREEN}.${COLOR_NORMAL}"
+                        fi
+                    fi
+
                 fi
             else
                 echo -e "\n${COLOR_RED}No valid artist or album for file ${COLOR_YELLOW}$ADIRECTORY_REPRESENTATIVE_FILE${COLOR_NORMAL}"
