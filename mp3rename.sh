@@ -95,7 +95,7 @@ then
     echo -e "  ${COLOR_YELLOW}--help${COLOR_NORMAL}                        Displays (this) help screen"
     echo -e "  ${COLOR_YELLOW}--remove-non-music-files${COLOR_NORMAL}      Removes files different than MP3/FLAC"
     echo
-    echo -e "Script maintained by ${COLOR_BLUE}pepis@closbrothers.pl${COLOR_NORMAL}"
+    echo -e "Script maintained by ${COLOR_BLUE}piotr@polak.ro${COLOR_NORMAL}"
     echo
     exit 0
 fi
