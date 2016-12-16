@@ -11,7 +11,6 @@ SCRIPT_VERSION='0.2.2'
 # TODO Implement scenatio for colisions with file/directory names
 # TODO Issues with CD1 and CD2 (Tool the best of)
 
-# TODO Implement --very-verbose
 # TODO Fix move folder bug when there are less than 4 files in the folder
 
 # Sample output
@@ -226,8 +225,8 @@ then
     echo -e "  ${COLOR_YELLOW}--help${COLOR_NORMAL}                        Displays (this) help screen"
     echo -e "  ${COLOR_YELLOW}--remove-non-music-files${COLOR_NORMAL}      Removes files different than MP3/FLAC"
     echo -e "  ${COLOR_YELLOW}--verbose${COLOR_NORMAL}                     Displays extra debug information"
-    echo -e "  ${COLOR_YELLOW}--very-verbose${COLOR_NORMAL}                Displays basic id3 tags for each file"
-    echo -e "  ${COLOR_YELLOW}--very-very-verbose${COLOR_NORMAL}           Displays full id3 tags for each file"
+    echo -e "  ${COLOR_YELLOW}--very-verbose${COLOR_NORMAL}                Displays basic ID3 tags for each file"
+    echo -e "  ${COLOR_YELLOW}--very-very-verbose${COLOR_NORMAL}           Displays full ID3 tags for each file"
     echo -e "  ${COLOR_YELLOW}--dry-run${COLOR_NORMAL}                     Dry run, do not change anything"
     echo -e "  ${COLOR_YELLOW}--skip-files${COLOR_NORMAL}                  Skips renaming files"
     echo -e "  ${COLOR_YELLOW}--skip-directories${COLOR_NORMAL}            Skips renaming directories"
