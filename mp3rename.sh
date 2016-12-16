@@ -90,9 +90,100 @@ function sugestHelp {
 }
 
 function abortScript {
-  echo -e "${COLOR_RED}${1}${COLOR_NORMAL}"
-  sugestHelp
-  exit $2
+    echo -e "${COLOR_RED}${1}${COLOR_NORMAL}"
+    sugestHelp
+    exit $2
+}
+
+function getTrack {
+    TRACK=`echo "$1" | sed -n '/^TRCK/s/^.*: //p' | sed 's/ (.*//' | sed 's/\/.*//'`
+    # Try TRK in case TRCK is empty  (some iTunes encoded mp3)
+    if [ "$TRACK" = '' ]
+    then
+        TRACK=`echo "$1" | sed -n '/^TRK/s/^.*: //p' | sed 's/ (.*//' | sed 's/\/.*//'`
+    fi
+
+    # Removing zeros from the begining of the track number
+    TRACK=$(echo $TRACK | sed 's/^0*//')
+
+    echo $TRACK
+}
+
+function getTitle {
+    TITLE=`echo "$1" | sed -n '/^TIT2/s/^.*: //p' | sed 's/ (.*//'`
+    # Try TT2 if TIT2 is not present (some iTunes encoded mp3)
+    if [ "$TITLE" = '' ]
+    then
+        TITLE=`echo "$1" | sed -n '/^TT2/s/^.*: //p' | sed 's/ (.*//'`
+    fi
+
+    echo $TITLE
+}
+
+function getAlbum {
+    ALBUM=`echo "$INFO" | sed -n '/^TALB/s/^.*: //p' | sed 's/ (.*//'`
+
+    # Try TP1 if TALB is not present (some iTunes encoded mp3)
+    if [ "$ALBUM" = '' ]
+    then
+        ALBUM=`echo "$INFO" | sed -n '/^TAL/s/^.*: //p' | sed 's/ (.*//'`
+    fi
+
+    echo $ALBUM
+}
+
+function getArtist {
+    ARTIST=`echo "$INFO" | sed -n '/^TPE1/s/^.*: //p' | sed 's/ (.*//'`
+
+    # Try TP1 if TPE1 is not present (some iTunes encoded mp3)
+    if [ "$ARTIST" = '' ]
+    then
+        ARTIST=`echo "$INFO" | sed -n '/^TP1/s/^.*: //p' | sed 's/ (.*//'`
+    fi
+
+    echo $ARTIST
+}
+
+function getYear {
+    YEAR=`echo "$INFO" | sed -n '/^TYER/s/^.*: //p' | sed 's/ (.*//'`
+
+    # Taking only 4 first characters out of the year variable
+    # This is an extra protection against incorrectly encoded tags storing timestamps
+    YEAR=${YEAR:0:4}
+
+    echo $YEAR
+}
+
+function getNormalizedFileName {
+    # Removing special characters
+    DESIRED_FILENAME=`echo $1 | sed -e "s/[?\.:|&!@#$%^&*()_+\"\/]//g"`
+    # Removing multiple spaces
+    DESIRED_FILENAME=`echo $DESIRED_FILENAME | sed -e "s/  / /g"`
+    # Adding extension
+    DESIRED_FILENAME="${DESIRED_FILENAME}.mp3"
+
+    # Appending 0 to songs having number less than 10
+    if [ "${DESIRED_FILENAME:1:1}" = ' ' ]
+    then
+        DESIRED_FILENAME="0$DESIRED_FILENAME"
+    fi
+
+    echo $DESIRED_FILENAME
+}
+
+function getNormalizedDirName {
+    # Some albums do not have any valid year, thus leaving an empty space in directory name
+    DESIRED_DIRNAME=`echo "$1" | sed "s/\-  \-/\-/"`
+    # Removing special characters
+    DESIRED_DIRNAME=`echo $DESIRED_DIRNAME | sed -e "s/[?\.:|&!@#$%^&*()_+\"\/]//g"`
+    # Removing multiple spaces
+    DESIRED_DIRNAME=`echo $DESIRED_DIRNAME | sed -e "s/  / /g"`
+
+    echo $DESIRED_DIRNAME
+}
+
+function getLowercase {
+    echo $1 | tr '[:upper:]' '[:lower:]'
 }
 
 ################################################################################
@@ -182,13 +273,13 @@ then
         fi
 
         # Printing debug information
-        if [ $? -eq 0 ]
+        if [[ $? -eq 0 ]] || [[ $OPTION_DRYRUN = false ]]
         then
             COUNTER=$((COUNTER+1))
 
             if [ $OPTION_VERBOSE = true ]
             then
-                echo "Removed $NON_MP3_NOR_FLAC_FILE"
+                echo -e "Removed ${COLOR_YELLOW}$NON_MP3_NOR_FLAC_FILE${COLOR_NORMAL}"
             else
                 echo -en "${COLOR_GREEN}.${COLOR_NORMAL}"
             fi
@@ -254,48 +345,21 @@ do
                     DIRNAME=`dirname "$MP3"`
 
                     # Parsing title and track
-                    TITLE=`echo "$INFO" | sed -n '/^TIT2/s/^.*: //p' | sed 's/ (.*//'`
-                    TRACK=`echo "$INFO" | sed -n '/^TRCK/s/^.*: //p' | sed 's/ (.*//' | sed 's/\/.*//'`
-
-                    # Try TT2 if TIT2 is not present (some iTunes encoded mp3)
-                    if [ "$TITLE" = '' ]
-                    then
-                        TITLE=`echo "$INFO" | sed -n '/^TT2/s/^.*: //p' | sed 's/ (.*//'`
-                    fi
-
-                    # Try TRK in case TRCK is empty  (some iTunes encoded mp3)
-                    if [ "$TRACK" = '' ]
-                    then
-                        TRACK=`echo "$INFO" | sed -n '/^TRK/s/^.*: //p' | sed 's/ (.*//' | sed 's/\/.*//'`
-                    fi
-
-                    # Removing zeros from the begining of the track number
-                    TRACK=$(echo $TRACK | sed 's/^0*//')
+                    TITLE=`getTitle "$INFO"`
+                    TRACK=`getTrack "$INFO"`
 
                     if [ "$TRACK" != '' ] && [ "$TITLE" != '' ]
                     then
                         # Desired file name composed out of the MP3 info
-                        DESIRED_FILENAME="${TRACK} ${TITLE}"
-                        # Removing special characters
-                        DESIRED_FILENAME=`echo $DESIRED_FILENAME | sed -e "s/[?\.:|&!@#$%^&*()_+\"\/]//g"`
-                        # Removing multiple spaces
-                        DESIRED_FILENAME=`echo $DESIRED_FILENAME | sed -e "s/  / /g"`
-                        # Adding extension
-                        DESIRED_FILENAME="${DESIRED_FILENAME}.mp3"
-
-                        # Appending 0 to songs having number less than 10
-                        if [ "${DESIRED_FILENAME:1:1}" = ' ' ]
-                        then
-                            DESIRED_FILENAME="0$DESIRED_FILENAME"
-                        fi
+                        DESIRED_FILENAME=`getNormalizedFileName "${TRACK} ${TITLE}"`
 
                         # Old filename
                         MP3_FILENAME=`basename "$MP3"`
 
                         # This is needed for FAT partitions only
                         # Please keep the variables quoted otherwise multiple spaces will be ignored!
-                        DESIRED_FILENAME_LOWER=`echo "$DESIRED_FILENAME" | tr '[:upper:]' '[:lower:]'`
-                        MP3_FILENAME_LOWER=`echo "$MP3_FILENAME" | tr '[:upper:]' '[:lower:]'`
+                        DESIRED_FILENAME_LOWER=`getLowercase "$DESIRED_FILENAME"`
+                        MP3_FILENAME_LOWER=`getLowercase "$MP3_FILENAME"`
 
                         # Rename file only if the newly generated filename is different
                         if [ "$DESIRED_FILENAME_LOWER" != "$MP3_FILENAME_LOWER" ];
@@ -306,13 +370,13 @@ do
                             fi
 
                             # Printing debug information
-                            if [ $? -eq 0 ]
+                            if [[ $? -eq 0 ]] || [[ $OPTION_DRYRUN = false ]]
                             then
                                 FILE_RENAME_COUNTER=$((FILE_RENAME_COUNTER+1))
 
                                 if [ $OPTION_VERBOSE = true ]
                                 then
-                                    echo "Renamed $MP3 to $DIRNAME/$DESIRED_FILENAME"
+                                    echo -e "Renamed ${COLOR_YELLOW}$MP3${COLOR_NORMAL} to ${COLOR_GREEN}$DESIRED_FILENAME${COLOR_NORMAL}"
                                 else
                                     echo -en "${COLOR_GREEN}.${COLOR_NORMAL}"
                                 fi
@@ -323,21 +387,9 @@ do
                         # Picking a representative file only if the file was not previously selected
                         if [ "$ADIRECTORY_REPRESENTATIVE_FILE" = '' ]
                         then
-                            # Parsing album and artist
-                            ALBUM=`echo "$INFO" | sed -n '/^TALB/s/^.*: //p' | sed 's/ (.*//'` # Variable needed for checking whether the folder is an album
-                            ARTIST=`echo "$INFO" | sed -n '/^TPE1/s/^.*: //p' | sed 's/ (.*//'` # Variable needed for checking whether the folder is an album
-
-                            # Try TP1 if TALB is not present (some iTunes encoded mp3)
-                            if [ "$ALBUM" = '' ]
-                            then
-                                ALBUM=`echo "$INFO" | sed -n '/^TAL/s/^.*: //p' | sed 's/ (.*//'`
-                            fi
-
-                            # Try TP1 if TPE1 is not present (some iTunes encoded mp3)
-                            if [ "$ARTIST" = '' ]
-                            then
-                                ARTIST=`echo "$INFO" | sed -n '/^TP1/s/^.*: //p' | sed 's/ (.*//'`
-                            fi
+                            # Variables needed for checking whether the folder is an album
+                            ALBUM=`getAlbum "$INFO"`
+                            ARTIST=`getArtist "$INFO"`
 
                             # Both album and artist must be non-empty and must be equal to the previously picked values
                             if [ "$ALBUM" != '' ] && [ "$ARTIST" != '' ]
@@ -389,32 +441,22 @@ do
         if [ $? -eq 0 ]
         then
             # Parsing http://stackoverflow.com/questions/5285838/get-mp3-id3-v2-tags-using-id3v2
-            ARTIST=`echo "$INFO" | sed -n '/^TPE1/s/^.*: //p' | sed 's/ (.*//'`
-            ALBUM=`echo "$INFO" | sed -n '/^TALB/s/^.*: //p' | sed 's/ (.*//'`
-            YEAR=`echo "$INFO" | sed -n '/^TYER/s/^.*: //p' | sed 's/ (.*//'`
-
-            # Taking only 4 first characters out of the year variable
-            # This is an extra protection against incorrectly encoded tags storing timestamps
-            YEAR=${YEAR:0:4}
+            ARTIST=`getArtist "$INFO"`
+            ALBUM=`getAlbum "$INFO"`
+            YEAR=`getYear "$INFO"`
 
             # Checking whether the minimal required tags are specified
             if [ "$ARTIST" != '' ] && [ "$ALBUM" != '' ]
             then
                 # Computing directory name out of the tags
-                DESIRED_DIRNAME="${ARTIST} - ${YEAR} - ${ALBUM}"
-                # Some albums do not have any valid year, thus leaving an empty space in directory name
-                DESIRED_DIRNAME=`echo "$DESIRED_DIRNAME" | sed "s/\-  \-/\-/"`
-                # Removing special characters
-                DESIRED_DIRNAME=`echo $DESIRED_DIRNAME | sed -e "s/[?\.:|&!@#$%^&*()_+\"\/]//g"`
-                # Removing multiple spaces
-                DESIRED_DIRNAME=`echo $DESIRED_DIRNAME | sed -e "s/  / /g"`
+                DESIRED_DIRNAME=`getNormalizedDirName "${ARTIST} - ${YEAR} - ${ALBUM}"`
                 # Computing the desired directoryname
                 DESIRED_DIRNAME="$BASE/$DESIRED_DIRNAME"
 
                 # This is needed for FAT partitions only
                 # Please keep the variables quoted otherwise multiple spaces will be ignored!
-                DESIRED_DIRNAME_LOWER=`echo "$DESIRED_DIRNAME" | tr '[:upper:]' '[:lower:]'`
-                DIRNAME_LOWER=`echo "$DIRNAME" | tr '[:upper:]' '[:lower:]'`
+                DESIRED_DIRNAME_LOWER=`getLowercase "$DESIRED_DIRNAME"`
+                DIRNAME_LOWER=`getLowercase "$DIRNAME"`
 
                 # Renaming directory name only when needed
                 if [ "$DESIRED_DIRNAME_LOWER" != "$DIRNAME_LOWER" ]
@@ -422,20 +464,20 @@ do
                     if [ $OPTION_DRYRUN = false ]
                     then
                         # TODO Add a protection whether $DESIRED_DIRNAME already exists
-                        mv "$DIRNAME" "$DESIRED_DIRNAME" && DIRECTORY_RENAME_COUNTER=$((DIRECTORY_RENAME_COUNTER+1))
+                        mv "$DIRNAME" "$DESIRED_DIRNAME"
                     fi
 
                     # Printing debug information
-                    if [ $? -eq 0 ]
+                    if [[ $? -eq 0 ]] || [[ $OPTION_DRYRUN = false ]]
                     then
+                        DIRECTORY_RENAME_COUNTER=$((DIRECTORY_RENAME_COUNTER+1))
                         if [ $OPTION_VERBOSE = true ]
                         then
-                            echo "Moved $DIRNAME" "$DESIRED_DIRNAME"
+                            echo -e "Moved ${COLOR_YELLOW}$DIRNAME${COLOR_NORMAL} to ${COLOR_YELLOW}$DESIRED_DIRNAME${COLOR_NORMAL}"
                         else
                             echo -en "${COLOR_GREEN}.${COLOR_NORMAL}"
                         fi
                     fi
-
                 fi
             else
                 echo -e "\n${COLOR_RED}No valid artist or album for file ${COLOR_YELLOW}$ADIRECTORY_REPRESENTATIVE_FILE${COLOR_NORMAL}"
