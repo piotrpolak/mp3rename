@@ -9,6 +9,8 @@ Use the following command to clean up your music library:
  * `--help`                        Displays help screen
  * `--remove-non-music-files`      Removes files different than MP3/FLAC
  * `--verbose`                     Displays extra debug information
+ * `--very-verbose`                Displays basic id3 tags for each file
+ * `--very-very-verbose`           Displays full id3 tags for each file
  * `--dry-run`                     Only displays operations, does not rename anything.
  * `--skip-files`                  Skips renaming files.
  * `--skip-directories`            Skips renaming directories.

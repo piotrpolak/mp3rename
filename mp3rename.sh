@@ -41,6 +41,8 @@ OPTION_HELP=false
 OPTION_HAS_UNKNOWN_FLAG=false
 OPTION_NON_MP3_NOR_FLAC_FILES=false
 OPTION_VERBOSE=false
+OPTION_VERY_VERBOSE=false
+OPTION_VERY_VERY_VERBOSE=false
 OPTION_DRYRUN=false
 OPTION_SKIP_FILES=false
 OPTION_SKIP_DIRECTORIES=false
@@ -67,6 +69,15 @@ do
         elif [ "$PARAM" = '--verbose' ]
         then
             OPTION_VERBOSE=true
+        elif [ "$PARAM" = '--very-verbose' ]
+        then
+            OPTION_VERBOSE=true
+            OPTION_VERY_VERBOSE=true
+          elif [ "$PARAM" = '--very-very-verbose' ]
+          then
+              OPTION_VERBOSE=true
+              OPTION_VERY_VERBOSE=true
+              OPTION_VERY_VERY_VERBOSE=true
         elif [ "$PARAM" = '--dry-run' ]
         then
             OPTION_DRYRUN=true
@@ -215,9 +226,11 @@ then
     echo -e "  ${COLOR_YELLOW}--help${COLOR_NORMAL}                        Displays (this) help screen"
     echo -e "  ${COLOR_YELLOW}--remove-non-music-files${COLOR_NORMAL}      Removes files different than MP3/FLAC"
     echo -e "  ${COLOR_YELLOW}--verbose${COLOR_NORMAL}                     Displays extra debug information"
-    echo -e "  ${COLOR_YELLOW}--dry-run${COLOR_NORMAL}                     Only displays operations, does not rename anything."
-    echo -e "  ${COLOR_YELLOW}--skip-files${COLOR_NORMAL}                  Skips renaming files."
-    echo -e "  ${COLOR_YELLOW}--skip-directories${COLOR_NORMAL}            Skips renaming directories."
+    echo -e "  ${COLOR_YELLOW}--very-verbose${COLOR_NORMAL}                Displays basic id3 tags for each file"
+    echo -e "  ${COLOR_YELLOW}--very-very-verbose${COLOR_NORMAL}           Displays full id3 tags for each file"
+    echo -e "  ${COLOR_YELLOW}--dry-run${COLOR_NORMAL}                     Dry run, do not change anything"
+    echo -e "  ${COLOR_YELLOW}--skip-files${COLOR_NORMAL}                  Skips renaming files"
+    echo -e "  ${COLOR_YELLOW}--skip-directories${COLOR_NORMAL}            Skips renaming directories"
     echo
     echo -e "Script maintained by ${COLOR_BLUE}piotr@polak.ro${COLOR_NORMAL}"
     echo
@@ -364,6 +377,24 @@ do
                     TITLE=`getTitle "$INFO"`
                     TRACK=`getTrack "$INFO"`
 
+                    if [ $OPTION_VERY_VERBOSE = true ]
+                    then
+                        ALBUM=`getAlbum "$INFO"`
+                        ARTIST=`getArtist "$INFO"`
+
+                        echo -en "INFO: ${COLOR_YELLOW}$MP3${COLOR_NORMAL} - "
+                        echo -en "${COLOR_BLUE}ALBUM:${COLOR_NORMAL} ${ALBUM} "
+                        echo -en "${COLOR_BLUE}ARTIST:${COLOR_NORMAL} ${ARTIST} "
+                        echo -en "${COLOR_BLUE}TITLE:${COLOR_NORMAL} ${TITLE} "
+                        echo -e "${COLOR_BLUE}TRACK:${COLOR_NORMAL} ${TRACK}"
+                    fi
+
+                    if [ $OPTION_VERY_VERY_VERBOSE = true ]
+                    then
+                        echo $INFO
+                        echo
+                    fi
+
                     if [ "$TRACK" != '' ] && [ "$TITLE" != '' ]
                     then
                         if [ $OPTION_SKIP_FILES = false ]
@@ -440,6 +471,8 @@ do
                             fi # End checking whether the representative file was selected
                         fi # End checking if skip directories
                     fi # End checking track and title
+                else
+                    echo -e "${COLOR_RED}Unable to read MP3 tags for ${COLOR_YELLOW}$MP3${COLOR_NORMAL}"
                 fi # End checking exit code
             else
                   echo -e "${COLOR_RED}Given file does not exist or file path contains invalid characters ${COLOR_YELLOW}${MP3}${COLOR_NORMAL}"
