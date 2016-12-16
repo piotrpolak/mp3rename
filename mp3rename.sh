@@ -72,7 +72,7 @@ do
             echo -e "${COLOR_YELLOW}Running in dry run mode. Directories and files will be untouched.${COLOR_NORMAL}"
         else
             OPTION_HAS_UNKNOWN_FLAG=true
-            echo -e "${COLOR_RED}Unknown flag $e${COLOR_NORMAL}"
+            echo -e "${COLOR_RED}Unknown flag ${PARAM}${COLOR_NORMAL}"
         fi
     else
         # Adding arguments
@@ -89,13 +89,18 @@ function sugestHelp {
     echo -e "For help type ${COLOR_YELLOW}./mp3rename.sh --help${COLOR_NORMAL}"
 }
 
+function abortScript {
+  echo -e "${COLOR_RED}${1}${COLOR_NORMAL}"
+  sugestHelp
+  exit $2
+}
 
 ################################################################################
 # Displaying error message for unknown flag
 ################################################################################
 if [ $OPTION_HAS_UNKNOWN_FLAG = true ]
 then
-    echo -e "Aborting, for help type ${COLOR_GREEN}./mp3rename.sh --help${COLOR_NORMAL}"
+    sugestHelp
     exit 9
 fi
 
@@ -132,9 +137,7 @@ fi
 # Checking whether the working directory exits
 if [ ! -d "$WORKING_DIRECTORY" ]
 then
-    echo -e "${COLOR_RED}Specified path is not a valid directory. Aborting.${COLOR_NORMAL}"
-    sugestHelp
-    exit 9
+    abortScript "Specified path is not a valid directory. Aborting." 9
 fi
 
 
@@ -143,9 +146,7 @@ fi
 ################################################################################
 if [ ${#ARGUMENTS[@]} -lt 1 ]
 then
-    echo -e "${COLOR_RED}Working directory is not specified. Aborting.${COLOR_NORMAL}"
-    sugestHelp
-    exit 9
+    abortScript "Working directory is not specified. Aborting." 9
 fi
 
 
