@@ -283,7 +283,7 @@ fi
 if [ $OPTION_NON_MP3_NOR_FLAC_FILES = true ]
 then
     echo "Removing files other that MP3 and FLAC..."
-    NON_MP3_NOR_FLAC_FILES=`find $WORKING_DIRECTORY*/ -type f -not -iname "*.mp3" -not -iname "*.flac" -printf "%p|"`
+    NON_MP3_NOR_FLAC_FILES=`find $WORKING_DIRECTORY*/ -type f -not -iname "*.mp3" -not -iname "*.flac"  -not -iname ".mp3skip" -printf "%p|"`
     COUNTER=0
 
     # Readint item by item
@@ -334,6 +334,17 @@ FILE_RENAME_COUNTER=0;
 # The main loop
 while read -d "|" ADIRECTORY
 do
+
+    if [ -f "$ADIRECTORY/.mp3skip" ]
+    then
+        if [ $OPTION_VERBOSE = true ]
+        then
+            echo -e "Skipping ${COLOR_YELLOW}$ADIRECTORY${COLOR_NORMAL}"
+        fi
+
+        continue
+    fi
+
     # Representative file containing tags to be taken when renaming directory
     ADIRECTORY_REPRESENTATIVE_FILE=''
     # Variable helping to detect whether a directory has MP3 files and should be renamed or just a group of albums
