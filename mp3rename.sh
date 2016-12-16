@@ -11,8 +11,7 @@ SCRIPT_VERSION='0.2.2'
 # TODO Implement scenatio for colisions with file/directory names
 # TODO Issues with CD1 and CD2 (Tool the best of)
 
-# TODO Implement --dirs-only option
-# TODO Implement --files-only option
+# TODO Implement --very-verbose
 # TODO Fix move folder bug when there are less than 4 files in the folder
 
 # Sample output
@@ -20,7 +19,7 @@ SCRIPT_VERSION='0.2.2'
 # TALB (Album/Movie/Show title): Majestic Casual - Chapter 2
 # TPE1 (Lead performer(s)/Soloist(s)): AlunaGeorge
 # TPE2 (Band/orchestra/accompaniment): Various Artists
-# TCOM (Composer): G. Reid & A. Francis
+# TCOM (Composer): G. Reid & A. Francis/media/mint/MUZYKA/Alternative/Grimes/
 # TCON (Content type): Electronic (52)
 # TCMP ():  frame
 # TIT2 (Title/songname/content description): You Know You Like It (Wilfred Giroux Remix)
@@ -43,6 +42,8 @@ OPTION_HAS_UNKNOWN_FLAG=false
 OPTION_NON_MP3_NOR_FLAC_FILES=false
 OPTION_VERBOSE=false
 OPTION_DRYRUN=false
+OPTION_SKIP_FILES=false
+OPTION_SKIP_DIRECTORIES=false
 
 # Arguments array
 declare -a ARGUMENTS=()
@@ -66,10 +67,16 @@ do
         elif [ "$PARAM" = '--verbose' ]
         then
             OPTION_VERBOSE=true
-        elif [ "$PARAM" = '--dryrun' ]
+        elif [ "$PARAM" = '--dry-run' ]
         then
             OPTION_DRYRUN=true
             echo -e "${COLOR_YELLOW}Running in dry run mode. Directories and files will be untouched.${COLOR_NORMAL}"
+        elif [ "$PARAM" = '--skip-files' ]
+        then
+            OPTION_SKIP_FILES=true
+        elif [ "$PARAM" = '--skip-directories' ]
+        then
+            OPTION_SKIP_DIRECTORIES=true
         else
             OPTION_HAS_UNKNOWN_FLAG=true
             echo -e "${COLOR_RED}Unknown flag ${PARAM}${COLOR_NORMAL}"
@@ -208,7 +215,9 @@ then
     echo -e "  ${COLOR_YELLOW}--help${COLOR_NORMAL}                        Displays (this) help screen"
     echo -e "  ${COLOR_YELLOW}--remove-non-music-files${COLOR_NORMAL}      Removes files different than MP3/FLAC"
     echo -e "  ${COLOR_YELLOW}--verbose${COLOR_NORMAL}                     Displays extra debug information"
-    echo -e "  ${COLOR_YELLOW}--dryrun${COLOR_NORMAL}                      Only displays operations, does not rename anything."
+    echo -e "  ${COLOR_YELLOW}--dry-run${COLOR_NORMAL}                     Only displays operations, does not rename anything."
+    echo -e "  ${COLOR_YELLOW}--skip-files${COLOR_NORMAL}                  Skips renaming files."
+    echo -e "  ${COLOR_YELLOW}--skip-directories${COLOR_NORMAL}            Skips renaming directories."
     echo
     echo -e "Script maintained by ${COLOR_BLUE}piotr@polak.ro${COLOR_NORMAL}"
     echo
@@ -292,6 +301,12 @@ then
 fi
 
 
+
+if [[ $OPTION_SKIP_FILES = true ]] && [[ $OPTION_SKIP_DIRECTORIES = true ]]
+then
+    exit 0
+fi
+
 ################################################################################
 # Reading directories and executing the main logic`
 ################################################################################
@@ -343,6 +358,7 @@ do
                 then
                     # Geting directory
                     DIRNAME=`dirname "$MP3"`
+                    CURRENT_FILE="$MP3"
 
                     # Parsing title and track
                     TITLE=`getTitle "$INFO"`
@@ -350,73 +366,79 @@ do
 
                     if [ "$TRACK" != '' ] && [ "$TITLE" != '' ]
                     then
-                        # Desired file name composed out of the MP3 info
-                        DESIRED_FILENAME=`getNormalizedFileName "${TRACK} ${TITLE}"`
-
-                        # Old filename
-                        MP3_FILENAME=`basename "$MP3"`
-
-                        # This is needed for FAT partitions only
-                        # Please keep the variables quoted otherwise multiple spaces will be ignored!
-                        DESIRED_FILENAME_LOWER=`getLowercase "$DESIRED_FILENAME"`
-                        MP3_FILENAME_LOWER=`getLowercase "$MP3_FILENAME"`
-
-                        # Rename file only if the newly generated filename is different
-                        if [ "$DESIRED_FILENAME_LOWER" != "$MP3_FILENAME_LOWER" ];
+                        if [ $OPTION_SKIP_FILES = false ]
                         then
-                            if [ $OPTION_DRYRUN = false ]
-                            then
-                                mv "$MP3" "$DIRNAME/$DESIRED_FILENAME"
-                            fi
+                            # Desired file name composed out of the MP3 info
+                            DESIRED_FILENAME=`getNormalizedFileName "${TRACK} ${TITLE}"`
 
-                            # Printing debug information
-                            if [[ $? -eq 0 ]] || [[ $OPTION_DRYRUN = false ]]
-                            then
-                                FILE_RENAME_COUNTER=$((FILE_RENAME_COUNTER+1))
+                            # Old filename
+                            MP3_FILENAME=`basename "$MP3"`
 
-                                if [ $OPTION_VERBOSE = true ]
+                            # This is needed for FAT partitions only
+                            # Please keep the variables quoted otherwise multiple spaces will be ignored!
+                            DESIRED_FILENAME_LOWER=`getLowercase "$DESIRED_FILENAME"`
+                            MP3_FILENAME_LOWER=`getLowercase "$MP3_FILENAME"`
+
+                            # Rename file only if the newly generated filename is different
+                            if [ "$DESIRED_FILENAME_LOWER" != "$MP3_FILENAME_LOWER" ];
+                            then
+                                if [ $OPTION_DRYRUN = false ]
                                 then
-                                    echo -e "Renamed ${COLOR_YELLOW}$MP3${COLOR_NORMAL} to ${COLOR_GREEN}$DESIRED_FILENAME${COLOR_NORMAL}"
-                                else
-                                    echo -en "${COLOR_GREEN}.${COLOR_NORMAL}"
+                                    mv "$MP3" "$DIRNAME/$DESIRED_FILENAME"
+                                    CURRENT_FILE="$DIRNAME/$DESIRED_FILENAME"
                                 fi
-                            fi
 
-                        fi
-
-                        # Picking a representative file only if the file was not previously selected
-                        if [ "$ADIRECTORY_REPRESENTATIVE_FILE" = '' ]
-                        then
-                            # Variables needed for checking whether the folder is an album
-                            ALBUM=`getAlbum "$INFO"`
-                            ARTIST=`getArtist "$INFO"`
-
-                            # Both album and artist must be non-empty and must be equal to the previously picked values
-                            if [ "$ALBUM" != '' ] && [ "$ARTIST" != '' ]
-                            then
-                                # TODO Check whether lowerecase artist TPE2 contains "various"
-                                if [ "$ALBUM" = "$PREVIOUS_ALBUM" ] && [ "$ARTIST" = "$PREVIOUS_ARTIST" ]
+                                # Printing debug information
+                                if [[ $? -eq 0 ]] || [[ $OPTION_DRYRUN = false ]]
                                 then
-                                    # Incrementing counter
-                                    ADIRECTORY_REPEATING_ALBUM_AND_ARTIST=$((ADIRECTORY_REPEATING_ALBUM_AND_ARTIST+1))
+                                    FILE_RENAME_COUNTER=$((FILE_RENAME_COUNTER+1))
 
-                                    # Picking one valid file if there are at least 4 consecutive files of the same album and artist
-                                    # TODO Make sure there are more than 4 songs in the folder
-                                    if [ $ADIRECTORY_REPEATING_ALBUM_AND_ARTIST -ge 4 ]
+                                    if [ $OPTION_VERBOSE = true ]
                                     then
-                                        ADIRECTORY_REPRESENTATIVE_FILE="$DIRNAME/$DESIRED_FILENAME"
+                                        echo -e "Renamed ${COLOR_YELLOW}$MP3${COLOR_NORMAL} to ${COLOR_GREEN}$DESIRED_FILENAME${COLOR_NORMAL}"
+                                    else
+                                        echo -en "${COLOR_GREEN}.${COLOR_NORMAL}"
                                     fi
                                 fi
-                            else
-                                # Reseting the counter
-                                ADIRECTORY_REPEATING_ALBUM_AND_ARTIST=0
-                            fi # End checking album and artist
+                            fi
+                        fi
 
-                            # Saving variables for next loop, outside the IF
-                            PREVIOUS_ALBUM="$ALBUM"
-                            PREVIOUS_ARTIST="$ARTIST"
+                        if [ $OPTION_SKIP_DIRECTORIES = false ]
+                        then
+                            # Picking a representative file only if the file was not previously selected
+                            if [ "$ADIRECTORY_REPRESENTATIVE_FILE" = '' ]
+                            then
+                                # Variables needed for checking whether the folder is an album
+                                ALBUM=`getAlbum "$INFO"`
+                                ARTIST=`getArtist "$INFO"`
 
-                        fi # End checking whether the representative file was selected
+                                # Both album and artist must be non-empty and must be equal to the previously picked values
+                                if [ "$ALBUM" != '' ] && [ "$ARTIST" != '' ]
+                                then
+                                    # TODO Check whether lowerecase artist TPE2 contains "various"
+                                    if [ "$ALBUM" = "$PREVIOUS_ALBUM" ] && [ "$ARTIST" = "$PREVIOUS_ARTIST" ]
+                                    then
+                                        # Incrementing counter
+                                        ADIRECTORY_REPEATING_ALBUM_AND_ARTIST=$((ADIRECTORY_REPEATING_ALBUM_AND_ARTIST+1))
+
+                                        # Picking one valid file if there are at least 4 consecutive files of the same album and artist
+                                        # TODO Make sure there are more than 4 songs in the folder
+                                        if [ $ADIRECTORY_REPEATING_ALBUM_AND_ARTIST -ge 4 ]
+                                        then
+                                            ADIRECTORY_REPRESENTATIVE_FILE=$CURRENT_FILE
+                                        fi
+                                    fi
+                                else
+                                    # Reseting the counter
+                                    ADIRECTORY_REPEATING_ALBUM_AND_ARTIST=0
+                                fi # End checking album and artist
+
+                                # Saving variables for next loop, outside the IF
+                                PREVIOUS_ALBUM="$ALBUM"
+                                PREVIOUS_ARTIST="$ARTIST"
+
+                            fi # End checking whether the representative file was selected
+                        fi # End checking if skip directories
                     fi # End checking track and title
                 fi # End checking exit code
             else
@@ -425,70 +447,73 @@ do
         fi
     done  <<< "$MP3S_IN_DIRECTORY" # Done reading mp3s, quotation is required for multiple spaces
 
-    # If there were any music files inside the directory
-    if [ "$ADIRECTORY_REPRESENTATIVE_FILE" != '' ]
+    if [ $OPTION_SKIP_DIRECTORIES = false ]
     then
-        # Renaming directories
-        DIRNAME=`dirname "$ADIRECTORY_REPRESENTATIVE_FILE"`
-
-        # Getting base directory
-        BASE=`dirname "$DIRNAME"`
-
-        # Getting MP3 info
-        INFO=`id3v2 -l "$ADIRECTORY_REPRESENTATIVE_FILE" 2> /dev/null`;
-
-        # Checking whether the MP3 file contains valid tags
-        if [ $? -eq 0 ]
+        # If there were any music files inside the directory
+        if [ "$ADIRECTORY_REPRESENTATIVE_FILE" != '' ]
         then
-            # Parsing http://stackoverflow.com/questions/5285838/get-mp3-id3-v2-tags-using-id3v2
-            ARTIST=`getArtist "$INFO"`
-            ALBUM=`getAlbum "$INFO"`
-            YEAR=`getYear "$INFO"`
+            # Renaming directories
+            DIRNAME=`dirname "$ADIRECTORY_REPRESENTATIVE_FILE"`
 
-            # Checking whether the minimal required tags are specified
-            if [ "$ARTIST" != '' ] && [ "$ALBUM" != '' ]
+            # Getting base directory
+            BASE=`dirname "$DIRNAME"`
+
+            # Getting MP3 info
+            INFO=`id3v2 -l "$ADIRECTORY_REPRESENTATIVE_FILE" 2> /dev/null`;
+
+            # Checking whether the MP3 file contains valid tags
+            if [ $? -eq 0 ]
             then
-                # Computing directory name out of the tags
-                DESIRED_DIRNAME=`getNormalizedDirName "${ARTIST} - ${YEAR} - ${ALBUM}"`
-                # Computing the desired directoryname
-                DESIRED_DIRNAME="$BASE/$DESIRED_DIRNAME"
+                # Parsing http://stackoverflow.com/questions/5285838/get-mp3-id3-v2-tags-using-id3v2
+                ARTIST=`getArtist "$INFO"`
+                ALBUM=`getAlbum "$INFO"`
+                YEAR=`getYear "$INFO"`
 
-                # This is needed for FAT partitions only
-                # Please keep the variables quoted otherwise multiple spaces will be ignored!
-                DESIRED_DIRNAME_LOWER=`getLowercase "$DESIRED_DIRNAME"`
-                DIRNAME_LOWER=`getLowercase "$DIRNAME"`
-
-                # Renaming directory name only when needed
-                if [ "$DESIRED_DIRNAME_LOWER" != "$DIRNAME_LOWER" ]
+                # Checking whether the minimal required tags are specified
+                if [ "$ARTIST" != '' ] && [ "$ALBUM" != '' ]
                 then
-                    if [ $OPTION_DRYRUN = false ]
-                    then
-                        # TODO Add a protection whether $DESIRED_DIRNAME already exists
-                        mv "$DIRNAME" "$DESIRED_DIRNAME"
-                    fi
+                    # Computing directory name out of the tags
+                    DESIRED_DIRNAME=`getNormalizedDirName "${ARTIST} - ${YEAR} - ${ALBUM}"`
+                    # Computing the desired directoryname
+                    DESIRED_DIRNAME="$BASE/$DESIRED_DIRNAME"
 
-                    # Printing debug information
-                    if [[ $? -eq 0 ]] || [[ $OPTION_DRYRUN = false ]]
+                    # This is needed for FAT partitions only
+                    # Please keep the variables quoted otherwise multiple spaces will be ignored!
+                    DESIRED_DIRNAME_LOWER=`getLowercase "$DESIRED_DIRNAME"`
+                    DIRNAME_LOWER=`getLowercase "$DIRNAME"`
+
+                    # Renaming directory name only when needed
+                    if [ "$DESIRED_DIRNAME_LOWER" != "$DIRNAME_LOWER" ]
                     then
-                        DIRECTORY_RENAME_COUNTER=$((DIRECTORY_RENAME_COUNTER+1))
-                        if [ $OPTION_VERBOSE = true ]
+                        if [ $OPTION_DRYRUN = false ]
                         then
-                            echo -e "Moved ${COLOR_YELLOW}$DIRNAME${COLOR_NORMAL} to ${COLOR_YELLOW}$DESIRED_DIRNAME${COLOR_NORMAL}"
-                        else
-                            echo -en "${COLOR_GREEN}.${COLOR_NORMAL}"
+                            # TODO Add a protection whether $DESIRED_DIRNAME already exists
+                            mv "$DIRNAME" "$DESIRED_DIRNAME"
+                        fi
+
+                        # Printing debug information
+                        if [[ $? -eq 0 ]] || [[ $OPTION_DRYRUN = false ]]
+                        then
+                            DIRECTORY_RENAME_COUNTER=$((DIRECTORY_RENAME_COUNTER+1))
+                            if [ $OPTION_VERBOSE = true ]
+                            then
+                                echo -e "Moved ${COLOR_YELLOW}$DIRNAME${COLOR_NORMAL} to ${COLOR_YELLOW}$DESIRED_DIRNAME${COLOR_NORMAL}"
+                            else
+                                echo -en "${COLOR_GREEN}.${COLOR_NORMAL}"
+                            fi
                         fi
                     fi
+                else
+                    echo -e "\n${COLOR_RED}No valid artist or album for file ${COLOR_YELLOW}$ADIRECTORY_REPRESENTATIVE_FILE${COLOR_NORMAL}"
                 fi
-            else
-                echo -e "\n${COLOR_RED}No valid artist or album for file ${COLOR_YELLOW}$ADIRECTORY_REPRESENTATIVE_FILE${COLOR_NORMAL}"
             fi
-        fi
-    else
-        # Displaying warning for directories having MP3 files but no valid tags
-        # Preventing from displaying this error for directories having other directories
-        if [ $ADIRECTORY_HAS_MP3_FILES = true ]
-        then
-            echo -e "${COLOR_RED}No ID3 tags or not an album for directory ${COLOR_YELLOW}$ADIRECTORY${COLOR_NORMAL}"
+        else
+            # Displaying warning for directories having MP3 files but no valid tags
+            # Preventing from displaying this error for directories having other directories
+            if [ $ADIRECTORY_HAS_MP3_FILES = true ]
+            then
+                echo -e "${COLOR_RED}No ID3 tags or not an album for directory ${COLOR_YELLOW}$ADIRECTORY${COLOR_NORMAL}"
+            fi
         fi
     fi
 done <<< "$DIRECTORIES" # Quotation is required for multiple spaces
