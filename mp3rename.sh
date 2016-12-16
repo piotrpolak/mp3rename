@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Defining versions and authors
-SCRIPT_VERSION='0.2.1'
+SCRIPT_VERSION='0.2.2'
 
 # Issues:
 # TODO Solve issues with directories containing & character (amp not displayed)
@@ -11,7 +11,6 @@ SCRIPT_VERSION='0.2.1'
 # TODO Implement scenatio for colisions with file/directory names
 # TODO Issues with CD1 and CD2 (Tool the best of)
 
-# TODO Implement --dry-run option
 # TODO Implement --dirs-only option
 # TODO Implement --files-only option
 # TODO Fix move folder bug when there are less than 4 files in the folder
@@ -43,6 +42,7 @@ OPTION_HELP=false
 OPTION_HAS_UNKNOWN_FLAG=false
 OPTION_NON_MP3_NOR_FLAC_FILES=false
 OPTION_VERBOSE=false
+OPTION_DRYRUN=false
 
 # Arguments array
 declare -a ARGUMENTS=()
@@ -66,6 +66,10 @@ do
         elif [ "$PARAM" = '--verbose' ]
         then
             OPTION_VERBOSE=true
+        elif [ "$PARAM" = '--dryrun' ]
+        then
+            OPTION_DRYRUN=true
+            echo -e "${COLOR_YELLOW}Running in dry run mode. Directories and files will be untouched.${COLOR_NORMAL}"
         else
             OPTION_HAS_UNKNOWN_FLAG=true
             echo -e "${COLOR_RED}Unknown flag $e${COLOR_NORMAL}"
@@ -76,6 +80,14 @@ do
     fi
 done
 echo
+
+################################################################################
+# Functions
+################################################################################
+
+function sugestHelp {
+    echo -e "For help type ${COLOR_YELLOW}./mp3rename.sh --help${COLOR_NORMAL}"
+}
 
 
 ################################################################################
@@ -100,6 +112,7 @@ then
     echo -e "  ${COLOR_YELLOW}--help${COLOR_NORMAL}                        Displays (this) help screen"
     echo -e "  ${COLOR_YELLOW}--remove-non-music-files${COLOR_NORMAL}      Removes files different than MP3/FLAC"
     echo -e "  ${COLOR_YELLOW}--verbose${COLOR_NORMAL}                     Displays extra debug information"
+    echo -e "  ${COLOR_YELLOW}--dryrun${COLOR_NORMAL}                      Only displays operations, does not rename anything."
     echo
     echo -e "Script maintained by ${COLOR_BLUE}piotr@polak.ro${COLOR_NORMAL}"
     echo
@@ -119,7 +132,8 @@ fi
 # Checking whether the working directory exits
 if [ ! -d "$WORKING_DIRECTORY" ]
 then
-    echo -e "${COLOR_RED}Specified path is not a valid directory ${COLOR_YELLOW}./mp3rename.sh --help${COLOR_NORMAL}"
+    echo -e "${COLOR_RED}Specified path is not a valid directory. Aborting.${COLOR_NORMAL}"
+    sugestHelp
     exit 9
 fi
 
@@ -129,7 +143,8 @@ fi
 ################################################################################
 if [ ${#ARGUMENTS[@]} -lt 1 ]
 then
-    echo -e "Working directory is not specified. Aborting, for help type ${COLOR_GREEN}./mp3rename.sh --help${COLOR_NORMAL}"
+    echo -e "${COLOR_RED}Working directory is not specified. Aborting.${COLOR_NORMAL}"
+    sugestHelp
     exit 9
 fi
 
@@ -160,11 +175,16 @@ then
     # Readint item by item
     while read -d "|" NON_MP3_NOR_FLAC_FILE
     do
-        rm "$NON_MP3_NOR_FLAC_FILE" && COUNTER=$((COUNTER+1))
+        if [ $OPTION_DRYRUN = false ]
+        then
+            rm "$NON_MP3_NOR_FLAC_FILE"
+        fi
 
         # Printing debug information
         if [ $? -eq 0 ]
         then
+            COUNTER=$((COUNTER+1))
+
             if [ $OPTION_VERBOSE = true ]
             then
                 echo "Removed $NON_MP3_NOR_FLAC_FILE"
@@ -279,11 +299,16 @@ do
                         # Rename file only if the newly generated filename is different
                         if [ "$DESIRED_FILENAME_LOWER" != "$MP3_FILENAME_LOWER" ];
                         then
-                            mv "$MP3" "$DIRNAME/$DESIRED_FILENAME" && FILE_RENAME_COUNTER=$((FILE_RENAME_COUNTER+1))
+                            if [ $OPTION_DRYRUN = false ]
+                            then
+                                mv "$MP3" "$DIRNAME/$DESIRED_FILENAME"
+                            fi
 
                             # Printing debug information
                             if [ $? -eq 0 ]
                             then
+                                FILE_RENAME_COUNTER=$((FILE_RENAME_COUNTER+1))
+
                                 if [ $OPTION_VERBOSE = true ]
                                 then
                                     echo "Renamed $MP3 to $DIRNAME/$DESIRED_FILENAME"
@@ -393,8 +418,11 @@ do
                 # Renaming directory name only when needed
                 if [ "$DESIRED_DIRNAME_LOWER" != "$DIRNAME_LOWER" ]
                 then
-                    # TODO Add a protection whether $DESIRED_DIRNAME already exists
-                    mv "$DIRNAME" "$DESIRED_DIRNAME" && DIRECTORY_RENAME_COUNTER=$((DIRECTORY_RENAME_COUNTER+1))
+                    if [ $OPTION_DRYRUN = false ]
+                    then
+                        # TODO Add a protection whether $DESIRED_DIRNAME already exists
+                        mv "$DIRNAME" "$DESIRED_DIRNAME" && DIRECTORY_RENAME_COUNTER=$((DIRECTORY_RENAME_COUNTER+1))
+                    fi
 
                     # Printing debug information
                     if [ $? -eq 0 ]
