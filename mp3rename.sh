@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Defining versions and authors
-SCRIPT_VERSION='0.2.2'
+SCRIPT_VERSION='0.2.3'
 
 # Issues:
 # TODO Solve issues with directories containing & character (amp not displayed)
@@ -45,6 +45,7 @@ OPTION_VERY_VERY_VERBOSE=false
 OPTION_DRYRUN=false
 OPTION_SKIP_FILES=false
 OPTION_SKIP_DIRECTORIES=false
+OPTION_CONVERT_FLAC_TO_MP3=false
 
 # Arguments array
 declare -a ARGUMENTS=()
@@ -87,6 +88,9 @@ do
         elif [ "${PARAM}" = '--skip-directories' ]
         then
             OPTION_SKIP_DIRECTORIES=true
+        elif [ "${PARAM}" = '--convert-flac-to-mp3' ]
+        then
+            OPTION_CONVERT_FLAC_TO_MP3=true
         else
             OPTION_HAS_UNKNOWN_FLAG=true
             echo -e "${COLOR_RED}Unknown flag ${PARAM}${COLOR_NORMAL}"
@@ -229,6 +233,7 @@ then
     echo -e "  ${COLOR_YELLOW}--dry-run${COLOR_NORMAL}                     Dry run, do not change anything"
     echo -e "  ${COLOR_YELLOW}--skip-files${COLOR_NORMAL}                  Skips renaming files"
     echo -e "  ${COLOR_YELLOW}--skip-directories${COLOR_NORMAL}            Skips renaming directories"
+    echo -e "  ${COLOR_YELLOW}--convert-flac-to-mp3${COLOR_NORMAL}         Converts FLAC to MP3 320kb and replaces the file"
     echo
     echo -e "Script maintained by ${COLOR_BLUE}piotr@polak.ro${COLOR_NORMAL}"
     echo
@@ -353,7 +358,29 @@ do
     PREVIOUS_ARTIST=''
     ADIRECTORY_REPEATING_ALBUM_AND_ARTIST=0;
 
-    # Read list of MP3s inside the directory (withour recursion)
+
+    if [ $OPTION_CONVERT_FLAC_TO_MP3 = true ]
+    then
+	    pushd "${ADIRECTORY}" &> /dev/null
+        for f in *.flac
+        do
+            if [ $OPTION_DRYRUN = false ]
+            then
+                ffmpeg -i "$f" -ab 320k -map_metadata 0 -id3v2_version 3 "${f%flac}mp3" &> /dev/null && unlink "$f"
+            fi
+
+            if [ $OPTION_VERBOSE = true ]
+            then
+                echo -e "Converted ${COLOR_YELLOW}${ADIRECTORY}${f}${COLOR_NORMAL} to ${COLOR_GREEN}MP3 format${COLOR_NORMAL}"
+            else
+                echo -en "${COLOR_BLUE}.${COLOR_NORMAL}"
+            fi
+
+        done
+        popd &> /dev/null
+    fi
+
+    # Read list of MP3s inside the directory (without recursion)
     MP3S_IN_DIRECTORY=`find "${ADIRECTORY}" -type f -iname "*.mp3" -maxdepth 1 -printf "%p|" 2> /dev/null`
     if [ $? -ne 0 ]
     then
