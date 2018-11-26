@@ -387,6 +387,11 @@ do
         echo -e "${COLOR_RED}Given file does not exist or file path contains invalid characters ${COLOR_YELLOW}${ADIRECTORY}${COLOR_NORMAL}"
     fi
 
+    RES="${MP3S_IN_DIRECTORY//[^|]}"
+    NUMBER_OF_MP3S_IN_DIRECTORY="${#RES}"
+
+    echo $NUMBER_OF_MP3S_IN_DIRECTORY
+
     # For every MP3 file
     while read -d "|" MP3
     do
