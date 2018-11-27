@@ -390,8 +390,6 @@ do
     RES="${MP3S_IN_DIRECTORY//[^|]}"
     NUMBER_OF_MP3S_IN_DIRECTORY="${#RES}"
 
-    echo $NUMBER_OF_MP3S_IN_DIRECTORY
-
     # For every MP3 file
     while read -d "|" MP3
     do
@@ -494,11 +492,11 @@ do
                                         # Incrementing counter
                                         ADIRECTORY_REPEATING_ALBUM_AND_ARTIST=$((ADIRECTORY_REPEATING_ALBUM_AND_ARTIST+1))
 
-                                        # Picking one valid file if there are at least 4 consecutive files of the same album and artist
-                                        # TODO Make sure there are more than 4 songs in the folder
-                                        if [ $ADIRECTORY_REPEATING_ALBUM_AND_ARTIST -ge 4 ]
+                                        # Picking one valid file if there are at least 4 consecutive OR all files of the same album and artist
+                                        if [ $ADIRECTORY_REPEATING_ALBUM_AND_ARTIST -ge 4 ] || [ $ADIRECTORY_REPEATING_ALBUM_AND_ARTIST -eq $((NUMBER_OF_MP3S_IN_DIRECTORY-1)) ]
                                         then
                                             ADIRECTORY_REPRESENTATIVE_FILE=$CURRENT_FILE
+                                            echo $CURRENT_FILE
                                         fi
                                     fi
                                 else
