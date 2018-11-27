@@ -14,6 +14,7 @@ Use the following command to clean up your music library:
  * `--dry-run`                     Only displays operations, does not rename anything
  * `--skip-files`                  Skips renaming files
  * `--skip-directories`            Skips renaming directories
+ * `--convert-flac-to-mp3`         Converts FLAC to MP3 320kb and replaces the file
 
 ## Directory and file naming conventions
 
