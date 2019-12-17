@@ -276,7 +276,23 @@ then
     echo -e "${COLOR_RED}Please install id3v2 by executing ${COLOR_YELLOW}sudo apt-get install id3v2${COLOR_NORMAL}"
     echo -e "${COLOR_RED}Aborting${COLOR_NORMAL}"
     echo
-    exit -1
+    exit 1
+fi
+
+################################################################################
+# Testing whether ffmpeg command is available
+################################################################################
+if [ $OPTION_CONVERT_FLAC_TO_MP3 = true ]
+then
+    which ffmpeg > /dev/null
+    if [ $? -ne 0 ]
+    then
+        echo -e "${COLOR_RED}ERROR: ffmpeg is not installed${COLOR_NORMAL}"
+        echo -e "${COLOR_RED}Please install ffmpeg by executing ${COLOR_YELLOW}sudo apt-get install ffmpeg${COLOR_NORMAL}"
+        echo -e "${COLOR_RED}Aborting${COLOR_NORMAL}"
+        echo
+        exit 1
+    fi
 fi
 
 
@@ -286,7 +302,7 @@ fi
 if [ $OPTION_NON_MP3_NOR_FLAC_FILES = true ]
 then
     echo "Removing files other that MP3 and FLAC..."
-    NON_MP3_NOR_FLAC_FILES=`find $WORKING_DIRECTORY*/ -type f -not -iname "*.mp3" -not -iname "*.flac"  -not -iname ".mp3skip" -printf "%p|"`
+    NON_MP3_NOR_FLAC_FILES=`find $WORKING_DIRECTORY*/ -type f -not -iname "*.mp3" -not -iname "*.flac"  -not -iname ".mp3skip" -printf "%p|" 2> /dev/null`
     COUNTER=0
 
     # Readint item by item
@@ -328,7 +344,7 @@ fi
 ################################################################################
 
 # Note! File directories should not contain | character
-DIRECTORIES=`find $WORKING_DIRECTORY*/ -type d -printf "%p|"`
+DIRECTORIES=`find $WORKING_DIRECTORY*/ -type d -printf "%p|" 2> /dev/null`
 
 # Statistics counter
 DIRECTORY_RENAME_COUNTER=0
