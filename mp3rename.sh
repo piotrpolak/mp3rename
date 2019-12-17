@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Defining versions and authors
-SCRIPT_VERSION='0.2.3'
+SCRIPT_VERSION='0.3.0'
 
 # Issues:
 # TODO Solve issues with directories containing & character (amp not displayed)
@@ -361,23 +361,39 @@ do
 
     if [ $OPTION_CONVERT_FLAC_TO_MP3 = true ]
     then
-	    pushd "${ADIRECTORY}" &> /dev/null
-        for f in *.flac
-        do
-            if [ $OPTION_DRYRUN = false ]
-            then
-                ffmpeg -i "$f" -ab 320k -map_metadata 0 -id3v2_version 3 "${f%flac}mp3" &> /dev/null && unlink "$f"
-            fi
+        FLAC_IN_DIRECTORY=`find "$ADIRECTORY" -type f -iname "*.flac" -maxdepth 1 -printf "%p|" 2> /dev/null`
 
-            if [ $OPTION_VERBOSE = true ]
-            then
-                echo -e "Converted ${COLOR_YELLOW}${ADIRECTORY}${f}${COLOR_NORMAL} to ${COLOR_GREEN}MP3 format${COLOR_NORMAL}"
-            else
-                echo -en "${COLOR_BLUE}.${COLOR_NORMAL}"
-            fi
+        RES="${FLAC_IN_DIRECTORY//[^|]}"
+        NUMBER_OF_FLAC_IN_DIRECTORY="${#RES}"
 
-        done
-        popd &> /dev/null
+        if [ $? -ne 0 ]
+        then
+           echo -e "${COLOR_RED}No flac files in directory ${COLOR_YELLOW}${ADIRECTORY}${COLOR_NORMAL}"
+        else
+            echo -e "Found $NUMBER_OF_FLAC_IN_DIRECTORY flac files${COLOR_NORMAL}"
+            while read -d "|" FLAC
+            do
+                CONVERT_SUCCESS=1
+                if [ $OPTION_DRYRUN = false ]
+                then
+                    # https://unix.stackexchange.com/questions/36310/strange-errors-when-using-ffmpeg-in-a-loop
+                    < /dev/null ffmpeg -i "$FLAC" -ab 320k -map_metadata 0 -id3v2_version 3 "$FLAC.mp3" 2> /dev/null && unlink "$FLAC"
+                    CONVERT_SUCCESS=$?
+                fi
+
+                if [ $CONVERT_SUCCESS -ne 0 ]
+                then
+                    echo -e "${COLOR_RED}Error converting ${COLOR_YELLOW}${FLAC}${COLOR_NORMAL}${COLOR_YELLOW}${COLOR_NORMAL}"
+                else
+                    if [ $OPTION_VERBOSE = true ]
+                    then
+                        echo -e "Converted ${COLOR_YELLOW}${FLAC}${COLOR_NORMAL} to ${COLOR_GREEN}MP3 format${COLOR_NORMAL}"
+                    else
+                        echo -en "${COLOR_BLUE}.${COLOR_NORMAL}"
+                    fi
+                fi
+           done  <<< "$FLAC_IN_DIRECTORY" # Done reading flac, quotation is required for multiple spaces
+        fi
     fi
 
     # Read list of MP3s inside the directory (without recursion)
@@ -431,7 +447,7 @@ do
                     # Displaying full info for very very verbose mode
                     if [ $OPTION_VERY_VERY_VERBOSE = true ]
                     then
-                        echo $INFO
+                        echo "[INFO]: $INFO"
                         echo
                     fi
 
@@ -496,7 +512,6 @@ do
                                         if [ $ADIRECTORY_REPEATING_ALBUM_AND_ARTIST -ge 4 ] || [ $ADIRECTORY_REPEATING_ALBUM_AND_ARTIST -eq $((NUMBER_OF_MP3S_IN_DIRECTORY-1)) ]
                                         then
                                             ADIRECTORY_REPRESENTATIVE_FILE=$CURRENT_FILE
-                                            echo $CURRENT_FILE
                                         fi
                                     fi
                                 else
