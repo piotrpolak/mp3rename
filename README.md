@@ -1,6 +1,8 @@
-# MP3 bulk rename tool
+# MP3 bulk rename and FLAC conversion tool
 
 A command line tool that renames MP3 files and their directories according to ID3 tags.
+
+The tool is able to automatically transform FLAC files to MP3.
 
 ## Usage
 Use the following command to clean up your music library:
